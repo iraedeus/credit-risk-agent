@@ -26,3 +26,41 @@ priority = "explicit"
 
 [tool.poetry.dependencies]
 torch = {source = "pytorch-cpu"}
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.1.1,<10.0.0)",
+    "ruff (>=0.15.22,<0.16.0)",
+    "pre-commit (>=4.6.0,<5.0.0)",
+    "mypy (>=2.3.0,<3.0.0)"
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "RUF",  # Ruff-specific rules
+    "PL",   # Pylint
+]
+ignore = [
+    "PLR0913", # Too many arguments to function call
+    "RUF001",  # String contains ambiguous unicode character
+    "RUF002",  # Docstring contains ambiguous unicode character
+    "RUF003",  # Comment contains ambiguous unicode character
+]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["data", "agent"]
+strict = true
+ignore_missing_imports = true
+warn_unused_configs = true
+show_error_codes = true

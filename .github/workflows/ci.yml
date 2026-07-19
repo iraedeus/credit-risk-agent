@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quality-gate:
+    name: Code Quality & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pipx install poetry
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "poetry"
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Lint with Ruff
+        run: poetry run ruff check
+
+      - name: Check formatting with Ruff
+        run: poetry run ruff format --check
+
+      - name: Type check with mypy
+        run: poetry run mypy
