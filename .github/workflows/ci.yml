@@ -5,6 +5,10 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  KAGGLE_USERNAME: dummy
+  KAGGLE_KEY: dummy
+
 jobs:
   quality-gate:
     name: Code Quality, Types & Tests (Python ${{ matrix.python-version }})
