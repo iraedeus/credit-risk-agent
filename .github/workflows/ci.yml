@@ -2,14 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
   quality-gate:
-    name: Code Quality & Type Check
+    name: Code Quality, Types & Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,10 +19,10 @@ jobs:
       - name: Install poetry
         run: pipx install poetry
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: "poetry"
 
       - name: Install dependencies
@@ -34,3 +36,6 @@ jobs:
 
       - name: Type check with mypy
         run: poetry run mypy
+
+      - name: Run tests
+        run: poetry run pytest
