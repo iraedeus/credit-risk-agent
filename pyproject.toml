@@ -11,6 +11,9 @@ dependencies = [
     "kaggle (>=2.2.3,<3.0.0)",
     "pandas (>=3.0.3,<4.0.0)",
     "torch (>=2.13.0,<3.0.0)",
+    "jupyterlab (>=4.6.1,<5.0.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
+    "matplotlib (>=3.11.1,<4.0.0)",
 ]
 
 
@@ -41,6 +44,7 @@ dev = [
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+exclude = ["notebooks/"]
 
 [tool.ruff.lint]
 select = [
