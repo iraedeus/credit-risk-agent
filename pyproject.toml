@@ -63,7 +63,7 @@ ignore = [
 
 [tool.mypy]
 python_version = "3.12"
-files = ["data", "agent"]
+files = ["data", "agent", "model"]
 strict = true
 ignore_missing_imports = true
 warn_unused_configs = true
