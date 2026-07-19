@@ -31,14 +31,14 @@ def wide_to_long(df: pd.DataFrame, column_prefix: str) -> pd.DataFrame:
         A DataFrame in long format containing the 'ID', 'month', and melted column.
     """
 
-    # Находим все колонки, соответствующие префиксу (например, PAY_1, PAY_2...)
+    # Find all columns matching the prefix (e.g., PAY_1, PAY_2...)
     value_vars = [
         col for col in df.columns if col.startswith(column_prefix) and col.replace(column_prefix, "").isdigit()
     ]
 
-    # Преобразуем из широкого формата в длинный
+    # Convert from wide format to long format
     df_long = df.melt(id_vars=["ID"], value_vars=value_vars, var_name="month", value_name=column_prefix)
-    # Превращаем название колонки (например, 'PAY_1') в номер месяца (1)
+    # Convert column name (e.g., 'PAY_1') to month number (1)
     df_long["month"] = df_long["month"].str.replace(column_prefix, "").astype(int)
     return df_long
 
@@ -52,34 +52,34 @@ def main() -> None:
     saves them into a local SQLite database, and cleans up the temporary files.
     """
 
-    # 1. Скачивание датасета с Kaggle
+    # 1. Download dataset from Kaggle
     kaggle.api.authenticate()
     kaggle.api.dataset_download_files("uciml/default-of-credit-card-clients-dataset", path=DATASET_PATH, unzip=True)
 
-    # 2. Обработка данных
+    # 2. Data preprocessing
     df = pd.read_csv(DATASET_PATH / "UCI_Credit_Card.csv")
     df = df.rename(columns={"PAY_0": "PAY_1"})
 
-    # Разделяем признаки клиента и историю платежей
+    # Separate client features and payment history
     client_features = ["LIMIT_BAL", "SEX", "EDUCATION", "MARRIAGE", "AGE", "default.payment.next.month"]
     client_df = df[["ID", *client_features]].copy()
     history_df = df.drop(columns=client_features)
 
-    # Переименовываем колонки для таблицы Client
+    # Rename columns for the Client table
     client_df.columns = CLIENT_COLUMNS
 
-    # Преобразуем историю платежей, балансов и оплат из широкого формата в длинный
+    # Transform payment history, balances, and payment amounts from wide to long format
     pay_df = wide_to_long(history_df, "PAY_")
     bill_df = wide_to_long(history_df, "BILL_AMT")
     pay_amt_df = wide_to_long(history_df, "PAY_AMT")
 
-    # Объединяем историю платежей в единую таблицу
+    # Merge payment history columns into a single unified table
     final_history_df = pay_df.merge(bill_df, on=["ID", "month"]).merge(pay_amt_df, on=["ID", "month"])
     final_history_df = final_history_df.rename(
         columns={"ID": "client_id", "PAY_": "pay_status", "BILL_AMT": "bill_amt", "PAY_AMT": "pay_amt"}
     )
 
-    # 3. Сохранение в базу данных SQLite
+    # 3. Save data into the SQLite database
     with sqlite3.connect(DATASET_PATH / "database.db") as conn:
         cursor = conn.cursor()
 
@@ -113,7 +113,7 @@ def main() -> None:
         client_df.to_sql("clients", conn, if_exists="append", index=False)
         final_history_df.to_sql("payment_history", conn, if_exists="append", index=False)
 
-    # 4. Удаление временного CSV-файла
+    # 4. Delete the temporary CSV file
     (DATASET_PATH / "UCI_Credit_Card.csv").unlink(missing_ok=True)
 
 
