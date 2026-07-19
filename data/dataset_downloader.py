@@ -11,6 +11,26 @@ HISTORY_COLUMNS = ["client_id", "month", "pay_status", "bill_amt", "pay_amt"]
 
 
 def wide_to_long(df: pd.DataFrame, column_prefix: str) -> pd.DataFrame:
+    """
+    Transform columns matching a prefix from wide format to long format.
+
+    Identifies all columns that start with the given prefix followed by digits,
+    melts them into a long format using the 'ID' column as identifier, and converts
+    the column names into integer month numbers.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The input DataFrame containing the wide format data.
+    column_prefix : str
+        The prefix to filter columns by (e.g., 'PAY_', 'BILL_AMT').
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame in long format containing the 'ID', 'month', and melted column.
+    """
+
     # Находим все колонки, соответствующие префиксу (например, PAY_1, PAY_2...)
     value_vars = [
         col for col in df.columns if col.startswith(column_prefix) and col.replace(column_prefix, "").isdigit()
@@ -24,6 +44,14 @@ def wide_to_long(df: pd.DataFrame, column_prefix: str) -> pd.DataFrame:
 
 
 def main() -> None:
+    """
+    Execute the ETL pipeline for the Credit Card dataset.
+
+    Downloads the UCI Credit Card dataset from Kaggle, preprocesses it, splits
+    client characteristics and payment history into separate long-format structures,
+    saves them into a local SQLite database, and cleans up the temporary files.
+    """
+
     # 1. Скачивание датасета с Kaggle
     kaggle.api.authenticate()
     kaggle.api.dataset_download_files("uciml/default-of-credit-card-clients-dataset", path=DATASET_PATH, unzip=True)
