@@ -52,6 +52,7 @@ select = [
 ]
 ignore = [
     "PLR0913", # Too many arguments to function call
+    "PLR2004", # Magic value used in comparison
     "RUF001",  # String contains ambiguous unicode character
     "RUF002",  # Docstring contains ambiguous unicode character
     "RUF003",  # Comment contains ambiguous unicode character
@@ -64,3 +65,8 @@ strict = true
 ignore_missing_imports = true
 warn_unused_configs = true
 show_error_codes = true
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]
