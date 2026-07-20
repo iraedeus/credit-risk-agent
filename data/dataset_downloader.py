@@ -11,9 +11,6 @@ CLIENT_COLUMNS = ["client_id", "limit_bal", "sex", "education", "marriage", "age
 HISTORY_COLUMNS = ["client_id", "month", "pay_status", "bill_amt", "pay_amt"]
 
 
-load_dotenv()
-
-
 def wide_to_long(df: pd.DataFrame, column_prefix: str) -> pd.DataFrame:
     """
     Transform columns matching a prefix from wide format to long format.
@@ -70,6 +67,8 @@ def main() -> None:
     client characteristics and payment history into separate long-format structures,
     saves them into a local SQLite database, and cleans up the temporary files.
     """
+
+    load_dotenv()
 
     # 1. Download dataset from Kaggle
     kaggle.api.authenticate()
