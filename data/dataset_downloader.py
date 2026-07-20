@@ -3,11 +3,15 @@ from pathlib import Path
 
 import kaggle
 import pandas as pd
+from dotenv import load_dotenv
 
 __ROOT__ = Path(__file__).parent.parent
 DATASET_PATH = __ROOT__ / "data"
 CLIENT_COLUMNS = ["client_id", "limit_bal", "sex", "education", "marriage", "age", "default"]
 HISTORY_COLUMNS = ["client_id", "month", "pay_status", "bill_amt", "pay_amt"]
+
+
+load_dotenv()
 
 
 def wide_to_long(df: pd.DataFrame, column_prefix: str) -> pd.DataFrame:
