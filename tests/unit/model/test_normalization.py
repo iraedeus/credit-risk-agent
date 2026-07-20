@@ -87,3 +87,18 @@ def test_normalize_non_inplace_safety(tmp_path: Path) -> None:
     assert sliced_df["feature1"].tolist() == [10.0, 20.0]
     # Возвращенный DataFrame нормализован корректно
     assert result["feature1"].tolist() == pytest.approx([-1.0, 0.0])
+
+
+def test_normalize_missing_column_error(tmp_path: Path) -> None:
+    # Arrange
+    df = pd.DataFrame({"feature1": [10.0, 20.0], "missing_feature": [1.0, 2.0]})
+    columns = ["feature1", "missing_feature"]
+
+    scaler_path = tmp_path / "scaler.json"
+    scaler_data = {"mean": {"feature1": 20.0}, "std": {"feature1": 10.0}}
+    with scaler_path.open("w", encoding="utf-8") as f:
+        json.dump(scaler_data, f)
+
+    # Act & Assert
+    with pytest.raises(ValueError, match="absent in the scaler parameters"):
+        normalize(df, columns, scaler_path)

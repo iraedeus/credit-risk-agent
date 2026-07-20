@@ -61,6 +61,12 @@ def normalize(df: pd.DataFrame, columns: list[str], scaler_path: Path) -> pd.Dat
 
     means = pd.Series(data["mean"])
     stds = pd.Series(data["std"])
+
+    # Check for missing columns
+    missing_cols = [col for col in columns if col not in means or col not in stds]
+    if missing_cols:
+        raise ValueError(f"Columns {missing_cols} are absent in the scaler parameters.")
+
     stds[stds == 0.0] = 1.0
 
     df[columns] = (df[columns] - means) / stds
