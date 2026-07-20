@@ -35,11 +35,26 @@ def wide_to_long(df: pd.DataFrame, column_prefix: str) -> pd.DataFrame:
     value_vars = [
         col for col in df.columns if col.startswith(column_prefix) and col.replace(column_prefix, "").isdigit()
     ]
+    if not value_vars:
+        raise KeyError(f"No columns matching prefix {column_prefix} found.")
 
-    # Convert from wide format to long format
-    df_long = df.melt(id_vars=["ID"], value_vars=value_vars, var_name="month", value_name=column_prefix)
-    # Convert column name (e.g., 'PAY_1') to month number (1)
-    df_long["month"] = df_long["month"].str.replace(column_prefix, "").astype(int)
+    # Select only the ID and matching columns to behave like melt
+    df_sub = df[["ID", *value_vars]]
+
+    # If the prefix has a trailing underscore (like PAY_), we temporarily rename the columns to remove it
+    if column_prefix.endswith("_"):
+        stub = column_prefix[:-1]
+        sep = "_"
+    else:
+        stub = column_prefix
+        sep = ""
+
+    df_long = pd.wide_to_long(df_sub, stubnames=[stub], i="ID", j="month", sep=sep).reset_index()
+
+    # If we stripped the trailing underscore, rename the column back
+    if column_prefix.endswith("_"):
+        df_long = df_long.rename(columns={stub: column_prefix})
+
     return df_long
 
 
@@ -68,15 +83,18 @@ def main() -> None:
     # Rename columns for the Client table
     client_df.columns = CLIENT_COLUMNS
 
-    # Transform payment history, balances, and payment amounts from wide to long format
-    pay_df = wide_to_long(history_df, "PAY_")
-    bill_df = wide_to_long(history_df, "BILL_AMT")
-    pay_amt_df = wide_to_long(history_df, "PAY_AMT")
+    # Transform payment history, balances, and payment amounts from wide to long format in a single pass
+    # Rename PAY_1, PAY_2... to PAY1, PAY2... to standardize suffixes for a single-pass pd.wide_to_long
+    history_df_renamed = history_df.rename(
+        columns=lambda x: x.replace("PAY_", "PAY") if x.startswith("PAY_") and not x.startswith("PAY_AMT") else x
+    )
 
-    # Merge payment history columns into a single unified table
-    final_history_df = pay_df.merge(bill_df, on=["ID", "month"]).merge(pay_amt_df, on=["ID", "month"])
+    final_history_df = pd.wide_to_long(
+        history_df_renamed, stubnames=["PAY", "BILL_AMT", "PAY_AMT"], i="ID", j="month", sep=""
+    ).reset_index()
+
     final_history_df = final_history_df.rename(
-        columns={"ID": "client_id", "PAY_": "pay_status", "BILL_AMT": "bill_amt", "PAY_AMT": "pay_amt"}
+        columns={"ID": "client_id", "PAY": "pay_status", "BILL_AMT": "bill_amt", "PAY_AMT": "pay_amt"}
     )
 
     # 3. Save data into the SQLite database

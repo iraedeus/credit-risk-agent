@@ -1,6 +1,6 @@
 import pandas as pd
 
-from model.preprocessing import STATIC_FEATURES, preprocess, preprocess_static
+from data.preprocessing import STATIC_FEATURES, preprocess, preprocess_static
 
 
 def test_preprocess_marriage_mapping() -> None:
@@ -90,3 +90,33 @@ def test_preprocess_static_ohe_and_alignment() -> None:
 
     # Check non-inplace safety
     assert "age_binned" not in df.columns
+
+
+def test_preprocess_static_extreme_ages() -> None:
+    # Arrange
+    # Test age 0, age 105, and NaN
+    df = pd.DataFrame(
+        {
+            "limit_bal": [10000.0, 20000.0, 30000.0],
+            "sex": [1, 1, 1],
+            "marriage": [1, 2, 1],
+            "education": [1, 2, 1],
+            "age": [0, 105, None],
+        }
+    )
+
+    # Act
+    result = preprocess_static(df)
+
+    # Assert
+    assert result.shape == (3, 14)
+    # Client 0 (age 0) should be binned safely (e.g. to bin 0)
+    assert result.iloc[0]["age_binned_0"] == 1.0
+    # Client 1 (age 105) should be binned safely (e.g. to bin 3)
+    assert result.iloc[1]["age_binned_3"] == 1.0
+    # Client 2 (age None) should not crash, and all age_binned columns should be 0.0
+    client_2 = result.iloc[2]
+    assert client_2["age_binned_0"] == 0.0
+    assert client_2["age_binned_1"] == 0.0
+    assert client_2["age_binned_2"] == 0.0
+    assert client_2["age_binned_3"] == 0.0

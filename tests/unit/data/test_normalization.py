@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from model.normalization import fit_and_save_scaler, normalize
+from data.normalization import StandardScaler, fit_and_save_scaler, normalize
 
 
 def test_fit_and_save_scaler(tmp_path: Path) -> None:
@@ -87,3 +87,39 @@ def test_normalize_non_inplace_safety(tmp_path: Path) -> None:
     assert sliced_df["feature1"].tolist() == [10.0, 20.0]
     # Возвращенный DataFrame нормализован корректно
     assert result["feature1"].tolist() == pytest.approx([-1.0, 0.0])
+
+
+def test_normalize_missing_column_error(tmp_path: Path) -> None:
+    # Arrange
+    df = pd.DataFrame({"feature1": [10.0, 20.0], "missing_feature": [1.0, 2.0]})
+    columns = ["feature1", "missing_feature"]
+
+    scaler_path = tmp_path / "scaler.json"
+    scaler_data = {"mean": {"feature1": 20.0}, "std": {"feature1": 10.0}}
+    with scaler_path.open("w", encoding="utf-8") as f:
+        json.dump(scaler_data, f)
+
+    # Act & Assert
+    with pytest.raises(ValueError, match="absent in the scaler parameters"):
+        normalize(df, columns, scaler_path)
+
+
+def test_standard_scaler_class(tmp_path: Path) -> None:
+    # Arrange
+    df = pd.DataFrame({"feature1": [10.0, 20.0, 30.0]})
+    columns = ["feature1"]
+    save_path = tmp_path / "scaler_class.json"
+
+    # Act - Fit & Save
+    scaler = StandardScaler().fit(df, columns)
+    scaler.save(save_path)
+
+    # Assert save
+    assert save_path.exists()
+
+    # Act - Load & Transform
+    loaded_scaler = StandardScaler.load(save_path)
+    result = loaded_scaler.transform(df, columns)
+
+    # Assert transform
+    assert result["feature1"].tolist() == pytest.approx([-1.0, 0.0, 1.0])

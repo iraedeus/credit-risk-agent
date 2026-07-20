@@ -70,7 +70,7 @@ def preprocess_static(df: pd.DataFrame) -> pd.DataFrame:
         One-hot encoded and aligned DataFrame containing only STATIC_FEATURES columns.
     """
     df = df.copy()
-    df["age_binned"] = pd.cut(df["age"], bins=[0, 25, 35, 50, 100], labels=[0, 1, 2, 3]).astype(int)
+    df["age_binned"] = pd.cut(df["age"], bins=[-float("inf"), 25, 35, 50, float("inf")], labels=[0, 1, 2, 3])
 
     df_ohe = pd.get_dummies(df, columns=["sex", "marriage", "education", "age_binned"], dtype=float)
 

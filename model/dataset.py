@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from model.preprocessing import preprocess_static
+from data import preprocess_static
 
 
 class CreditDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
@@ -17,9 +17,9 @@ class CreditDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
     """
 
     def __init__(self, sequences: np.ndarray, static_features: np.ndarray, labels: np.ndarray) -> None:
-        self.sequences = torch.tensor(sequences, dtype=torch.float32)
-        self.static_features = torch.tensor(static_features, dtype=torch.float32)
-        self.labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(-1)
+        self.sequences = torch.as_tensor(sequences, dtype=torch.float32)
+        self.static_features = torch.as_tensor(static_features, dtype=torch.float32)
+        self.labels = torch.as_tensor(labels, dtype=torch.float32).unsqueeze(-1)
 
     def __len__(self) -> int:
         return len(self.labels)
@@ -51,6 +51,12 @@ def prepare_dataset(
     CreditDataset
         Dataset ready for PyTorch model training or evaluation.
     """
+    # Check sequence lengths: each client must have exactly 6 records
+    counts = df.groupby(id_col).size()
+    invalid_clients = counts[counts != 6]
+    if not invalid_clients.empty:
+        raise ValueError(f"Clients {invalid_clients.index.tolist()} must have exactly 6 records.")
+
     # 1. Pivot sequence history into a 3D array (batch_size, 6, 3)
     df_wide = df.pivot(index=id_col, columns="month", values=["bill_amt", "pay_amt", "pay_status"])
     df_wide = df_wide.reorder_levels([1, 0], axis=1).sort_index(axis=1)
