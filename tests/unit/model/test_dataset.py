@@ -92,3 +92,21 @@ def test_prepare_dataset_invalid_sequence_lengths() -> None:
     # Act & Assert
     with pytest.raises(ValueError, match="must have exactly 6 records"):
         prepare_dataset(df)
+
+
+def test_credit_dataset_memory_sharing() -> None:
+    # Arrange
+    sequences = np.random.randn(2, 6, 3).astype(np.float32)
+    static_features = np.random.randn(2, 14).astype(np.float32)
+    labels = np.array([0.0, 1.0], dtype=np.float32)
+
+    # Act
+    dataset = CreditDataset(sequences, static_features, labels)
+
+    # Modify original numpy array
+    sequences[0, 0, 0] = 999.0
+    static_features[0, 0] = 888.0
+
+    # Assert
+    assert dataset.sequences[0, 0, 0].item() == 999.0
+    assert dataset.static_features[0, 0].item() == 888.0

@@ -17,9 +17,9 @@ class CreditDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
     """
 
     def __init__(self, sequences: np.ndarray, static_features: np.ndarray, labels: np.ndarray) -> None:
-        self.sequences = torch.tensor(sequences, dtype=torch.float32)
-        self.static_features = torch.tensor(static_features, dtype=torch.float32)
-        self.labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(-1)
+        self.sequences = torch.as_tensor(sequences, dtype=torch.float32)
+        self.static_features = torch.as_tensor(static_features, dtype=torch.float32)
+        self.labels = torch.as_tensor(labels, dtype=torch.float32).unsqueeze(-1)
 
     def __len__(self) -> int:
         return len(self.labels)
