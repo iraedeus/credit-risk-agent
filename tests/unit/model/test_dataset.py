@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 import torch
 
 from model.dataset import CreditDataset, prepare_dataset
@@ -67,3 +68,27 @@ def test_prepare_dataset_shape() -> None:
     assert x_static.shape == (14,)
     assert y.shape == (1,)
     assert y.item() == 0.0
+
+
+def test_prepare_dataset_invalid_sequence_lengths() -> None:
+    # Arrange
+    # Client 1 has 6 records (valid), Client 2 has only 5 records (invalid)
+    df = pd.DataFrame(
+        {
+            "client_id": [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2],
+            "month": [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5],
+            "bill_amt": [100.0] * 11,
+            "pay_amt": [50.0] * 11,
+            "pay_status": [0.0] * 11,
+            "default": [0] * 11,
+            "limit_bal": [10000.0] * 6 + [20000.0] * 5,
+            "sex": [1] * 6 + [2] * 5,
+            "marriage": [1] * 6 + [2] * 5,
+            "education": [1] * 6 + [2] * 5,
+            "age": [25] * 6 + [40] * 5,
+        }
+    )
+
+    # Act & Assert
+    with pytest.raises(ValueError, match="must have exactly 6 records"):
+        prepare_dataset(df)

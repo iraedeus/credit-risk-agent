@@ -51,6 +51,12 @@ def prepare_dataset(
     CreditDataset
         Dataset ready for PyTorch model training or evaluation.
     """
+    # Check sequence lengths: each client must have exactly 6 records
+    counts = df.groupby(id_col).size()
+    invalid_clients = counts[counts != 6]
+    if not invalid_clients.empty:
+        raise ValueError(f"Clients {invalid_clients.index.tolist()} must have exactly 6 records.")
+
     # 1. Pivot sequence history into a 3D array (batch_size, 6, 3)
     df_wide = df.pivot(index=id_col, columns="month", values=["bill_amt", "pay_amt", "pay_status"])
     df_wide = df_wide.reorder_levels([1, 0], axis=1).sort_index(axis=1)
