@@ -1,6 +1,6 @@
 import pandas as pd
 
-from model.preprocessing import preprocess, preprocess_static
+from model.preprocessing import STATIC_FEATURES, preprocess, preprocess_static
 
 
 def test_preprocess_marriage_mapping() -> None:
@@ -66,8 +66,6 @@ def test_preprocess_static_ohe_and_alignment() -> None:
     assert result.shape == (2, 14)
 
     # Check order of columns matches STATIC_FEATURES
-    from model.preprocessing import STATIC_FEATURES
-
     assert list(result.columns) == STATIC_FEATURES
 
     # Check values for client 0: limit_bal=10000.0, sex=1, marriage=1, education=1, age_binned=0

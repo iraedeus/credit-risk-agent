@@ -45,7 +45,10 @@ dev = [
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-exclude = ["notebooks/"]
+exclude = [
+    "docs",
+    "notebooks",
+]
 
 [tool.ruff.lint]
 select = [
@@ -69,6 +72,11 @@ ignore = [
 [tool.mypy]
 python_version = "3.12"
 files = ["data", "agent", "model"]
+exclude = [
+    "^docs/",
+    "^tests/",
+    "^notebooks/",
+]
 strict = true
 ignore_missing_imports = true
 warn_unused_configs = true
