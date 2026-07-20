@@ -1,6 +1,6 @@
 import pandas as pd
 
-from model.preprocessing import STATIC_FEATURES, preprocess, preprocess_static
+from data.preprocessing import STATIC_FEATURES, preprocess, preprocess_static
 
 
 def test_preprocess_marriage_mapping() -> None:

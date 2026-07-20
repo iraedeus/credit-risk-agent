@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from model.preprocessing import preprocess_static
+from data import preprocess_static
 
 
 class CreditDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
