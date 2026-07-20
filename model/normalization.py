@@ -4,6 +4,93 @@ from pathlib import Path
 import pandas as pd
 
 
+class StandardScaler:
+    """
+    Standardize features by removing the mean and scaling to unit variance.
+
+    Parameters
+    ----------
+    mean : dict of str to float, optional
+        Means for each feature.
+    std : dict of str to float, optional
+        Standard deviations for each feature.
+    """
+
+    def __init__(self, mean: dict[str, float] | None = None, std: dict[str, float] | None = None) -> None:
+        self.mean = mean or {}
+        self.std = std or {}
+
+    def fit(self, df: pd.DataFrame, columns: list[str]) -> "StandardScaler":
+        """
+        Compute the mean and std to be used for later scaling.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            The input training DataFrame.
+        columns : list of str
+            The list of columns to fit the statistics on.
+        """
+        means = df[columns].mean()
+        stds = df[columns].std()
+        stds[stds == 0.0] = 1.0
+
+        self.mean = means.to_dict()
+        self.std = stds.to_dict()
+        return self
+
+    def transform(self, df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+        """
+        Perform standardization by centering and scaling.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            The input DataFrame to normalize.
+        columns : list of str
+            The list of columns to normalize.
+        """
+        df = df.copy()
+        means = pd.Series(self.mean)
+        stds = pd.Series(self.std)
+
+        # Check for missing columns
+        missing_cols = [col for col in columns if col not in means.index or col not in stds.index]
+        if missing_cols:
+            raise ValueError(f"Columns {missing_cols} are absent in the scaler parameters.")
+
+        stds[stds == 0.0] = 1.0
+        df[columns] = (df[columns] - means) / stds
+        return df
+
+    def save(self, path: Path) -> None:
+        """
+        Save the scaler parameters to a JSON file.
+
+        Parameters
+        ----------
+        path : Path
+            The file path where parameters will be saved as JSON.
+        """
+        data = {"mean": self.mean, "std": self.std}
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+    @classmethod
+    def load(cls, path: Path) -> "StandardScaler":
+        """
+        Load scaler parameters from a JSON file.
+
+        Parameters
+        ----------
+        path : Path
+            The file path to the JSON file containing the parameters.
+        """
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        return cls(mean=data["mean"], std=data["std"])
+
+
 def fit_and_save_scaler(train_df: pd.DataFrame, columns: list[str], save_path: Path) -> None:
     """
     Calculate the mean and standard deviation for specified columns and save to JSON.
@@ -19,18 +106,8 @@ def fit_and_save_scaler(train_df: pd.DataFrame, columns: list[str], save_path: P
     save_path : Path
         The file path where the calculated parameters will be saved as JSON.
     """
-
-    means = train_df[columns].mean()
-    stds = train_df[columns].std()
-    stds[stds == 0.0] = 1.0
-
-    means_dict = means.to_dict()
-    stds_dict = stds.to_dict()
-
-    data = {"mean": means_dict, "std": stds_dict}
-
-    with save_path.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    scaler = StandardScaler().fit(train_df, columns)
+    scaler.save(save_path)
 
 
 def normalize(df: pd.DataFrame, columns: list[str], scaler_path: Path) -> pd.DataFrame:
@@ -54,20 +131,5 @@ def normalize(df: pd.DataFrame, columns: list[str], scaler_path: Path) -> pd.Dat
     pd.DataFrame
         A new DataFrame with normalized columns.
     """
-
-    df = df.copy()
-    with scaler_path.open("r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    means = pd.Series(data["mean"])
-    stds = pd.Series(data["std"])
-
-    # Check for missing columns
-    missing_cols = [col for col in columns if col not in means or col not in stds]
-    if missing_cols:
-        raise ValueError(f"Columns {missing_cols} are absent in the scaler parameters.")
-
-    stds[stds == 0.0] = 1.0
-
-    df[columns] = (df[columns] - means) / stds
-    return df
+    scaler = StandardScaler.load(scaler_path)
+    return scaler.transform(df, columns)
