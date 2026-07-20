@@ -1,16 +1,18 @@
 import numpy as np
+import pandas as pd
 import torch
 
-from model.dataset import CreditDataset
+from model.dataset import CreditDataset, prepare_dataset
 
 
 def test_credit_dataset_length() -> None:
     # Arrange
-    sequences = np.random.randn(10, 5, 3)
+    sequences = np.random.randn(10, 6, 3)
+    static_features = np.random.randn(10, 14)
     labels = np.random.randint(0, 2, size=(10,))
 
     # Act
-    dataset = CreditDataset(sequences, labels)
+    dataset = CreditDataset(sequences, static_features, labels)
 
     # Assert
     assert len(dataset) == 10
@@ -18,16 +20,50 @@ def test_credit_dataset_length() -> None:
 
 def test_credit_dataset_getitem() -> None:
     # Arrange
-    sequences = np.random.randn(2, 5, 3)
+    sequences = np.random.randn(2, 6, 3)
+    static_features = np.random.randn(2, 14)
     labels = np.array([0, 1])
 
     # Act
-    dataset = CreditDataset(sequences, labels)
-    x, y = dataset[0]
+    dataset = CreditDataset(sequences, static_features, labels)
+    x_seq, x_static, y = dataset[0]
 
     # Assert
-    assert isinstance(x, torch.Tensor)
+    assert isinstance(x_seq, torch.Tensor)
+    assert isinstance(x_static, torch.Tensor)
     assert isinstance(y, torch.Tensor)
-    assert x.shape == (5, 3)
+    assert x_seq.shape == (6, 3)
+    assert x_static.shape == (14,)
+    assert y.shape == (1,)
+    assert y.item() == 0.0
+
+
+def test_prepare_dataset_shape() -> None:
+    # Arrange
+    # Create mock dataframe for 2 clients, each having 6 months of data
+    df = pd.DataFrame(
+        {
+            "client_id": [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2],
+            "month": [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6],
+            "bill_amt": [100.0] * 12,
+            "pay_amt": [50.0] * 12,
+            "pay_status": [0.0] * 12,
+            "default": [0] * 12,
+            "limit_bal": [10000.0] * 6 + [20000.0] * 6,
+            "sex": [1] * 6 + [2] * 6,
+            "marriage": [1] * 6 + [2] * 6,
+            "education": [1] * 6 + [2] * 6,
+            "age": [25] * 6 + [40] * 6,
+        }
+    )
+
+    # Act
+    dataset = prepare_dataset(df)
+
+    # Assert
+    assert len(dataset) == 2
+    x_seq, x_static, y = dataset[0]
+    assert x_seq.shape == (6, 3)
+    assert x_static.shape == (14,)
     assert y.shape == (1,)
     assert y.item() == 0.0
