@@ -62,3 +62,26 @@ def test_sql_query_database_error() -> None:
 
     # 3. Assert
     assert "Ошибка SQL: no such table: clients_bad" in result
+
+
+def test_sql_query_limit() -> None:
+    """Проверяем, что запрос возвращает не более 100 строк (ограничение fetchmany(100))."""
+    # 1. Arrange
+    mock_conn = MagicMock()
+    mock_conn.__enter__.return_value = mock_conn
+    mock_cursor = MagicMock()
+
+    mock_cursor.description = [("client_id",)]
+    # Имитируем возвращение ровно 100 строк
+    mock_cursor.fetchmany.return_value = [(i,) for i in range(100)]
+    mock_conn.cursor.return_value = mock_cursor
+
+    # 2. Act
+    with patch("sqlite3.connect", return_value=mock_conn):
+        result = sql_query("SELECT client_id FROM clients")
+
+    # 3. Assert
+    lines = result.split("\n")
+    assert lines[0] == "client_id"
+    assert len(lines) == 101  # Заголовок + 100 строк данных
+    mock_cursor.fetchmany.assert_called_once_with(100)

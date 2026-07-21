@@ -35,6 +35,23 @@ def load_and_preprocess_data() -> pd.DataFrame:
         return df
 
 
+def load_and_preprocess_test_data() -> pd.DataFrame:
+    test_df = pd.read_csv(DATASET_PATH / "test_clients.csv")
+    with sqlite3.connect(DATASET_PATH / "database.db") as conn:
+        test_df.to_sql("temp_test_ids", conn, if_exists="replace", index=False)
+        client_df = pd.read_sql_query(
+            "SELECT * FROM clients WHERE client_id IN (SELECT client_id FROM temp_test_ids)", conn
+        )
+        history_df = pd.read_sql_query(
+            "SELECT * FROM payment_history WHERE client_id IN (SELECT client_id FROM temp_test_ids)", conn
+        )
+        conn.execute("DROP TABLE temp_test_ids")
+
+        df = pd.merge(client_df, history_df, on="client_id")
+        df = preprocess(df)
+        return df
+
+
 def split_and_save_ids(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     client_data = df[[ID_COL, TARGET_COL]].drop_duplicates()
     train_ids, test_ids = train_test_split(
