@@ -1,9 +1,12 @@
 import sqlite3
 from pathlib import Path
 
-import kaggle
 import pandas as pd
 from dotenv import load_dotenv
+
+load_dotenv()
+
+import kaggle  # noqa: E402
 
 __ROOT__ = Path(__file__).parent.parent
 DATASET_PATH = __ROOT__ / "data"
@@ -67,8 +70,6 @@ def main() -> None:
     client characteristics and payment history into separate long-format structures,
     saves them into a local SQLite database, and cleans up the temporary files.
     """
-
-    load_dotenv()
 
     # 1. Download dataset from Kaggle
     kaggle.api.authenticate()
