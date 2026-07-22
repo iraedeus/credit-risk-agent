@@ -1,7 +1,7 @@
 import sqlite3
 from unittest.mock import MagicMock, patch
 
-from agent.tools import sql_query
+from credit_risk_agent.agent.tools import sql_query
 
 
 def test_sql_query_success() -> None:

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from data.dataset_downloader import wide_to_long
+from credit_risk_agent.data.downloader import wide_to_long
 
 
 def test_wide_to_long_basic() -> None:

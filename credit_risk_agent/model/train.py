@@ -9,24 +9,23 @@ from torch import nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-from data import fit_and_save_scaler, normalize, preprocess
-from data.dataset_downloader import DATASET_PATH
-from model import CreditDefaultPredictor, prepare_dataset
-
-__ROOT__ = Path(__file__).parent.parent
-SCALER_PATH = __ROOT__ / "data" / "scaler.json"
-MODEL_SAVE_PATH = __ROOT__ / "model" / "model.pt"
-
-BATCH_SIZE = 64
-LEARNING_RATE = 0.001
-
-ID_COL = "client_id"
-TARGET_COL = "default"
-SCALER_COLS = ["pay_amt", "bill_amt", "limit_bal"]
+from credit_risk_agent.config import (
+    ARTIFACTS_PATH,
+    BATCH_SIZE,
+    DATABASE_PATH,
+    ID_COL,
+    LEARNING_RATE,
+    MODEL_SAVE_PATH,
+    SCALER_COLS,
+    SCALER_PATH,
+    TARGET_COL,
+)
+from credit_risk_agent.data import fit_and_save_scaler, normalize, preprocess
+from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
 
 
 def load_and_preprocess_data() -> pd.DataFrame:
-    with sqlite3.connect(DATASET_PATH / "database.db") as conn:
+    with sqlite3.connect(DATABASE_PATH) as conn:
         client_df = pd.read_sql_query("SELECT * FROM clients", conn)
         history_df = pd.read_sql_query("SELECT * FROM payment_history", conn)
 
@@ -36,8 +35,8 @@ def load_and_preprocess_data() -> pd.DataFrame:
 
 
 def load_and_preprocess_test_data() -> pd.DataFrame:
-    test_df = pd.read_csv(DATASET_PATH / "test_clients.csv")
-    with sqlite3.connect(DATASET_PATH / "database.db") as conn:
+    test_df = pd.read_csv(ARTIFACTS_PATH / "test_clients.csv")
+    with sqlite3.connect(DATABASE_PATH) as conn:
         test_df.to_sql("temp_test_ids", conn, if_exists="replace", index=False)
         client_df = pd.read_sql_query(
             "SELECT * FROM clients WHERE client_id IN (SELECT client_id FROM temp_test_ids)", conn
@@ -65,7 +64,7 @@ def split_and_save_ids(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     train_df = normalize(train_df, SCALER_COLS, SCALER_PATH)
     test_df = normalize(test_df, SCALER_COLS, SCALER_PATH)
 
-    test_ids.to_csv(DATASET_PATH / "test_clients.csv", index=False)
+    test_ids.to_csv(ARTIFACTS_PATH / "test_clients.csv", index=False)
 
     return train_df, test_df
 

@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from data.normalization import StandardScaler, fit_and_save_scaler, normalize
+from credit_risk_agent.data.normalization import StandardScaler, fit_and_save_scaler, normalize
 
 
 def test_fit_and_save_scaler(tmp_path: Path) -> None:

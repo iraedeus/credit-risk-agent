@@ -50,6 +50,8 @@ target-version = "py312"
 exclude = [
     "docs",
     "notebooks",
+    "data",
+    "artifacts"
 ]
 
 [tool.ruff.lint]
@@ -73,12 +75,7 @@ ignore = [
 
 [tool.mypy]
 python_version = "3.12"
-files = ["data", "agent", "model"]
-exclude = [
-    "^docs/",
-    "^tests/",
-    "^notebooks/",
-]
+files = ["credit_risk_agent"]
 strict = true
 ignore_missing_imports = true
 warn_unused_configs = true

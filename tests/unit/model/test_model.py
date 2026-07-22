@@ -1,6 +1,6 @@
 import torch
 
-from model.model import CreditDefaultPredictor
+from credit_risk_agent.model.model import CreditDefaultPredictor
 
 
 def test_model_initialization() -> None:

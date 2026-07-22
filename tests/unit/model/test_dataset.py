@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 import torch
 
-from model.dataset import CreditDataset, prepare_dataset
+from credit_risk_agent.model.dataset import CreditDataset, prepare_dataset
 
 
 def test_credit_dataset_length() -> None:

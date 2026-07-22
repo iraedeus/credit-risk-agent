@@ -1,5 +1,4 @@
 import sqlite3
-from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -8,10 +7,7 @@ load_dotenv()
 
 import kaggle  # noqa: E402
 
-__ROOT__ = Path(__file__).parent.parent
-DATASET_PATH = __ROOT__ / "data"
-CLIENT_COLUMNS = ["client_id", "limit_bal", "sex", "education", "marriage", "age", "default"]
-HISTORY_COLUMNS = ["client_id", "month", "pay_status", "bill_amt", "pay_amt"]
+from credit_risk_agent.config import CLIENT_COLUMNS, DATA_PATH, DATABASE_PATH
 
 
 def wide_to_long(df: pd.DataFrame, column_prefix: str) -> pd.DataFrame:
@@ -73,10 +69,10 @@ def main() -> None:
 
     # 1. Download dataset from Kaggle
     kaggle.api.authenticate()
-    kaggle.api.dataset_download_files("uciml/default-of-credit-card-clients-dataset", path=DATASET_PATH, unzip=True)
+    kaggle.api.dataset_download_files("uciml/default-of-credit-card-clients-dataset", path=DATA_PATH, unzip=True)
 
     # 2. Data preprocessing
-    df = pd.read_csv(DATASET_PATH / "UCI_Credit_Card.csv")
+    df = pd.read_csv(DATA_PATH / "UCI_Credit_Card.csv")
     df = df.rename(columns={"PAY_0": "PAY_1"})
 
     # Separate client features and payment history
@@ -102,7 +98,7 @@ def main() -> None:
     )
 
     # 3. Save data into the SQLite database
-    with sqlite3.connect(DATASET_PATH / "database.db") as conn:
+    with sqlite3.connect(DATABASE_PATH) as conn:
         cursor = conn.cursor()
 
         cursor.execute("PRAGMA foreign_keys = ON;")
@@ -136,7 +132,7 @@ def main() -> None:
         final_history_df.to_sql("payment_history", conn, if_exists="append", index=False)
 
     # 4. Delete the temporary CSV file
-    (DATASET_PATH / "UCI_Credit_Card.csv").unlink(missing_ok=True)
+    (DATA_PATH / "UCI_Credit_Card.csv").unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

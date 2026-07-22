@@ -1,17 +1,16 @@
 import pandas as pd
 import pytest
 
-from agent.tools import run_model
-from data.dataset_downloader import DATASET_PATH
-from model.train import MODEL_SAVE_PATH, SCALER_PATH
+from credit_risk_agent.agent.tools import run_model
+from credit_risk_agent.config import DATA_PATH, DATABASE_PATH, MODEL_SAVE_PATH, SCALER_PATH
 
 
 def test_run_model_integration_smoke() -> None:
     """Интеграционный smoke-тест работы run_model на реальных весах и датасете."""
-    if not (MODEL_SAVE_PATH.exists() and SCALER_PATH.exists() and DATASET_PATH.exists()):
+    if not (MODEL_SAVE_PATH.exists() and SCALER_PATH.exists() and DATABASE_PATH.exists()):
         pytest.skip("Файлы модели или датасета отсутствуют, пропуск интеграционного теста.")
 
-    test_clients_path = DATASET_PATH / "test_clients.csv"
+    test_clients_path = DATA_PATH / "test_clients.csv"
     if test_clients_path.exists():
         df = pd.read_csv(test_clients_path)
         if not df.empty and "client_id" in df.columns:

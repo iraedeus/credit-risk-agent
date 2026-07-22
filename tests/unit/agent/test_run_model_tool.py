@@ -3,13 +3,13 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import torch
 
-from agent.tools import run_model
+from credit_risk_agent.agent import run_model
 
 
-@patch("agent.tools.prepare_dataset")
-@patch("agent.tools.normalize")
-@patch("agent.tools.load_and_preprocess_test_data")
-@patch("agent.tools.CreditDefaultPredictor")
+@patch("credit_risk_agent.agent.tools.run_model.prepare_dataset")
+@patch("credit_risk_agent.agent.tools.run_model.normalize")
+@patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_test_data")
+@patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
 @patch("torch.load")
 def test_run_model_success(
     mock_torch_load: MagicMock,
@@ -42,9 +42,9 @@ def test_run_model_success(
     mock_model_instance.assert_called_once()
 
 
-@patch("agent.tools.normalize")
-@patch("agent.tools.load_and_preprocess_test_data")
-@patch("agent.tools.CreditDefaultPredictor")
+@patch("credit_risk_agent.agent.tools.run_model.normalize")
+@patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_test_data")
+@patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
 @patch("torch.load")
 def test_run_model_client_not_found(
     mock_torch_load: MagicMock,
@@ -66,10 +66,10 @@ def test_run_model_client_not_found(
     assert result == f"Клиент с id={client_id} не был найден в базе."
 
 
-@patch("agent.tools.prepare_dataset")
-@patch("agent.tools.normalize")
-@patch("agent.tools.load_and_preprocess_test_data")
-@patch("agent.tools.CreditDefaultPredictor")
+@patch("credit_risk_agent.agent.tools.run_model.prepare_dataset")
+@patch("credit_risk_agent.agent.tools.run_model.normalize")
+@patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_test_data")
+@patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
 @patch("torch.load")
 def test_run_model_formatting_precision(
     mock_torch_load: MagicMock,
