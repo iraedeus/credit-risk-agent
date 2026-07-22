@@ -7,7 +7,7 @@ from credit_risk_agent.agent import run_model
 
 
 @patch("credit_risk_agent.agent.tools.run_model.prepare_dataset")
-@patch("credit_risk_agent.agent.tools.run_model.normalize")
+@patch("credit_risk_agent.agent.tools.run_model.StandardScaler")
 @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_test_data")
 @patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
 @patch("torch.load")
@@ -15,7 +15,7 @@ def test_run_model_success(
     mock_torch_load: MagicMock,
     mock_predictor_cls: MagicMock,
     mock_load_data: MagicMock,
-    mock_normalize: MagicMock,
+    mock_scaler_cls: MagicMock,
     mock_prepare_dataset: MagicMock,
 ) -> None:
     """TC-RM-01: Проверка успешного выполнения скоринга для существующего клиента."""
@@ -23,7 +23,9 @@ def test_run_model_success(
     client_id = 15
     mock_df = pd.DataFrame({"client_id": [15, 20]})
     mock_load_data.return_value = mock_df
-    mock_normalize.return_value = mock_df
+    mock_scaler_instance = MagicMock()
+    mock_scaler_instance.transform.return_value = mock_df
+    mock_scaler_cls.load.return_value = mock_scaler_instance
 
     dummy_seq = torch.zeros((6, 3))
     dummy_static = torch.zeros((14,))
@@ -42,7 +44,7 @@ def test_run_model_success(
     mock_model_instance.assert_called_once()
 
 
-@patch("credit_risk_agent.agent.tools.run_model.normalize")
+@patch("credit_risk_agent.agent.tools.run_model.StandardScaler")
 @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_test_data")
 @patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
 @patch("torch.load")
@@ -50,14 +52,16 @@ def test_run_model_client_not_found(
     mock_torch_load: MagicMock,
     mock_predictor_cls: MagicMock,
     mock_load_data: MagicMock,
-    mock_normalize: MagicMock,
+    mock_scaler_cls: MagicMock,
 ) -> None:
     """TC-RM-02: Проверка поведения при отсутствии client_id в выборке."""
     # 1. Arrange
     client_id = 999999
     mock_df = pd.DataFrame({"client_id": [1, 2, 3]})
     mock_load_data.return_value = mock_df
-    mock_normalize.return_value = mock_df
+    mock_scaler_instance = MagicMock()
+    mock_scaler_instance.transform.return_value = mock_df
+    mock_scaler_cls.load.return_value = mock_scaler_instance
 
     # 2. Act
     result = run_model(client_id)
@@ -67,7 +71,7 @@ def test_run_model_client_not_found(
 
 
 @patch("credit_risk_agent.agent.tools.run_model.prepare_dataset")
-@patch("credit_risk_agent.agent.tools.run_model.normalize")
+@patch("credit_risk_agent.agent.tools.run_model.StandardScaler")
 @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_test_data")
 @patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
 @patch("torch.load")
@@ -75,7 +79,7 @@ def test_run_model_formatting_precision(
     mock_torch_load: MagicMock,
     mock_predictor_cls: MagicMock,
     mock_load_data: MagicMock,
-    mock_normalize: MagicMock,
+    mock_scaler_cls: MagicMock,
     mock_prepare_dataset: MagicMock,
 ) -> None:
     """TC-RM-03: Проверка форматирования скоринга (точность до 4 знаков после запятой)."""
@@ -83,7 +87,9 @@ def test_run_model_formatting_precision(
     client_id = 42
     mock_df = pd.DataFrame({"client_id": [42]})
     mock_load_data.return_value = mock_df
-    mock_normalize.return_value = mock_df
+    mock_scaler_instance = MagicMock()
+    mock_scaler_instance.transform.return_value = mock_df
+    mock_scaler_cls.load.return_value = mock_scaler_instance
 
     dummy_seq = torch.zeros((6, 3))
     dummy_static = torch.zeros((14,))

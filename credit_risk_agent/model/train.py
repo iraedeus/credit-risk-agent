@@ -20,7 +20,7 @@ from credit_risk_agent.config import (
     SCALER_PATH,
     TARGET_COL,
 )
-from credit_risk_agent.data import fit_and_save_scaler, normalize, preprocess
+from credit_risk_agent.data import StandardScaler, preprocess
 from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
 
 
@@ -60,9 +60,10 @@ def split_and_save_ids(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     train_df = df[df[ID_COL].isin(train_ids)]
     test_df = df[df[ID_COL].isin(test_ids)]
 
-    fit_and_save_scaler(train_df, SCALER_COLS, SCALER_PATH)
-    train_df = normalize(train_df, SCALER_COLS, SCALER_PATH)
-    test_df = normalize(test_df, SCALER_COLS, SCALER_PATH)
+    scaler = StandardScaler().fit(train_df, SCALER_COLS)
+    scaler.save(SCALER_PATH)
+    train_df = scaler.transform(train_df, SCALER_COLS)
+    test_df = scaler.transform(test_df, SCALER_COLS)
 
     test_ids.to_csv(ARTIFACTS_PATH / "test_clients.csv", index=False)
 
