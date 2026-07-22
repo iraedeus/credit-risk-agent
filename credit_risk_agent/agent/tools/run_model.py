@@ -8,6 +8,25 @@ from credit_risk_agent.model.train import load_and_preprocess_test_data
 
 
 def run_model(client_id: int) -> str:
+    """
+    Run the credit default prediction model for a specified client.
+
+    Loads the pre-trained CreditDefaultPredictor PyTorch model, fetches and
+    preprocesses the client's test features, and evaluates the neural network
+    to obtain a credit default risk score (probability).
+
+    Parameters
+    ----------
+    client_id : int
+        The unique identifier of the client for whom to predict credit default risk.
+
+    Returns
+    -------
+    str
+        A string message containing the model's predicted default risk score
+        formatted as a float between 0.0 and 1.0, or an error message if the client
+        is not found in the test dataset.
+    """
     model = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
     state_dict = torch.load(MODEL_SAVE_PATH)
     model.load_state_dict(state_dict)

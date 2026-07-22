@@ -4,6 +4,27 @@ from credit_risk_agent.config import DATABASE_PATH
 
 
 def get_client_financial_metrics(client_id: int) -> str:
+    """
+    Calculate and return key financial metrics for a specific client.
+
+    Retrieves demographic and payment history data for the given client ID from
+    the SQLite database, then computes aggregated financial metrics including
+    credit limit utilization rates, repayment ratios, and delinquency statistics
+    over the 6-month historical period.
+
+    Parameters
+    ----------
+    client_id : int
+        The unique identifier of the client to analyze.
+
+    Returns
+    -------
+    str
+        A formatted multi-line string containing the client's financial metrics
+        (credit limit, average bill, utilization rates, average payment,
+        repayment rate, maximum delay status, and delinquency month count),
+        or an error/not-found message if the client data cannot be retrieved.
+    """
     try:
         with sqlite3.connect(DATABASE_PATH) as conn:
             cursor = conn.cursor()
