@@ -6,7 +6,7 @@ authors = [
     {name = "iraedeus",email = "dtotjmyanin@mail.ru"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4"
 dependencies = [
     "kaggle (>=2.2.3,<3.0.0)",
     "pandas (>=3.0.3,<4.0.0)",
@@ -15,7 +15,13 @@ dependencies = [
     "seaborn (>=0.13.2,<0.14.0)",
     "matplotlib (>=3.11.1,<4.0.0)",
     "scikit-learn (>=1.9.0,<2.0.0)",
+    "gigachat (>=0.2.1,<0.3.0)",
+    "python-dotenv (>=1.2.2,<2.0.0)",
 ]
+
+[project.scripts]
+download-dataset = "scripts.download_dataset:main"
+train-model = "scripts.train:main"
 
 
 [build-system]
@@ -23,7 +29,7 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-package-mode = false
+package-mode = true
 
 [[tool.poetry.source]]
 name = "pytorch-cpu"
@@ -48,6 +54,8 @@ target-version = "py312"
 exclude = [
     "docs",
     "notebooks",
+    "data",
+    "artifacts"
 ]
 
 [tool.ruff.lint]
@@ -71,12 +79,7 @@ ignore = [
 
 [tool.mypy]
 python_version = "3.12"
-files = ["data", "agent", "model"]
-exclude = [
-    "^docs/",
-    "^tests/",
-    "^notebooks/",
-]
+files = ["credit_risk_agent"]
 strict = true
 ignore_missing_imports = true
 warn_unused_configs = true

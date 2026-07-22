@@ -39,3 +39,6 @@ htmlcov/
 *.spec
 
 data/*.db
+.agents/
+skills-lock.json
+artifacts/

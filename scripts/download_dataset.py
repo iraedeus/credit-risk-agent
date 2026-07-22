@@ -1,61 +1,13 @@
 import sqlite3
-from pathlib import Path
 
-import kaggle
 import pandas as pd
+from dotenv import load_dotenv
 
-__ROOT__ = Path(__file__).parent.parent
-DATASET_PATH = __ROOT__ / "data"
-CLIENT_COLUMNS = ["client_id", "limit_bal", "sex", "education", "marriage", "age", "default"]
-HISTORY_COLUMNS = ["client_id", "month", "pay_status", "bill_amt", "pay_amt"]
+from credit_risk_agent.config import CLIENT_COLUMNS, DATA_PATH, DATABASE_PATH
 
+load_dotenv()
 
-def wide_to_long(df: pd.DataFrame, column_prefix: str) -> pd.DataFrame:
-    """
-    Transform columns matching a prefix from wide format to long format.
-
-    Identifies all columns that start with the given prefix followed by digits,
-    melts them into a long format using the 'ID' column as identifier, and converts
-    the column names into integer month numbers.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        The input DataFrame containing the wide format data.
-    column_prefix : str
-        The prefix to filter columns by (e.g., 'PAY_', 'BILL_AMT').
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame in long format containing the 'ID', 'month', and melted column.
-    """
-
-    # Find all columns matching the prefix (e.g., PAY_1, PAY_2...)
-    value_vars = [
-        col for col in df.columns if col.startswith(column_prefix) and col.replace(column_prefix, "").isdigit()
-    ]
-    if not value_vars:
-        raise KeyError(f"No columns matching prefix {column_prefix} found.")
-
-    # Select only the ID and matching columns to behave like melt
-    df_sub = df[["ID", *value_vars]]
-
-    # If the prefix has a trailing underscore (like PAY_), we temporarily rename the columns to remove it
-    if column_prefix.endswith("_"):
-        stub = column_prefix[:-1]
-        sep = "_"
-    else:
-        stub = column_prefix
-        sep = ""
-
-    df_long = pd.wide_to_long(df_sub, stubnames=[stub], i="ID", j="month", sep=sep).reset_index()
-
-    # If we stripped the trailing underscore, rename the column back
-    if column_prefix.endswith("_"):
-        df_long = df_long.rename(columns={stub: column_prefix})
-
-    return df_long
+import kaggle  # noqa: E402
 
 
 def main() -> None:
@@ -69,10 +21,10 @@ def main() -> None:
 
     # 1. Download dataset from Kaggle
     kaggle.api.authenticate()
-    kaggle.api.dataset_download_files("uciml/default-of-credit-card-clients-dataset", path=DATASET_PATH, unzip=True)
+    kaggle.api.dataset_download_files("uciml/default-of-credit-card-clients-dataset", path=DATA_PATH, unzip=True)
 
     # 2. Data preprocessing
-    df = pd.read_csv(DATASET_PATH / "UCI_Credit_Card.csv")
+    df = pd.read_csv(DATA_PATH / "UCI_Credit_Card.csv")
     df = df.rename(columns={"PAY_0": "PAY_1"})
 
     # Separate client features and payment history
@@ -98,12 +50,20 @@ def main() -> None:
     )
 
     # 3. Save data into the SQLite database
-    with sqlite3.connect(DATASET_PATH / "database.db") as conn:
+    with sqlite3.connect(DATABASE_PATH) as conn:
         cursor = conn.cursor()
 
         cursor.execute("PRAGMA foreign_keys = ON;")
         cursor.execute("DROP TABLE IF EXISTS payment_history;")
+        cursor.execute("DROP TABLE IF EXISTS ground_truth;")
         cursor.execute("DROP TABLE IF EXISTS clients;")
+
+        cursor.execute("""CREATE TABLE ground_truth (
+            client_id INTEGER PRIMARY KEY,
+            'default' INTEGER,
+
+            FOREIGN KEY (client_id) REFERENCES clients ON DELETE CASCADE
+            );""")
 
         cursor.execute("""CREATE TABLE clients (
             client_id INTEGER PRIMARY KEY,
@@ -111,8 +71,7 @@ def main() -> None:
             sex INTEGER,
             education INTEGER,
             marriage INTEGER,
-            age INTEGER,
-            'default' INTEGER
+            age INTEGER
             );""")
 
         cursor.execute("""CREATE TABLE payment_history (
@@ -128,11 +87,12 @@ def main() -> None:
 
         conn.commit()
 
-        client_df.to_sql("clients", conn, if_exists="append", index=False)
+        client_df.drop(columns=["default"]).to_sql("clients", conn, if_exists="append", index=False)
+        client_df[["client_id", "default"]].to_sql("ground_truth", conn, if_exists="append", index=False)
         final_history_df.to_sql("payment_history", conn, if_exists="append", index=False)
 
     # 4. Delete the temporary CSV file
-    (DATASET_PATH / "UCI_Credit_Card.csv").unlink(missing_ok=True)
+    (DATA_PATH / "UCI_Credit_Card.csv").unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
