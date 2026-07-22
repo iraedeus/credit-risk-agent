@@ -28,6 +28,8 @@ from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
 def load_and_preprocess_data() -> pd.DataFrame:
     with sqlite3.connect(DATABASE_PATH) as conn:
         client_df = pd.read_sql_query("SELECT * FROM clients", conn)
+        gt_df = pd.read_sql_query('SELECT client_id, "default" FROM ground_truth', conn)
+        client_df = pd.merge(client_df, gt_df, on="client_id")
         history_df = pd.read_sql_query("SELECT * FROM payment_history", conn)
 
         df = pd.merge(client_df, history_df, on="client_id")
@@ -42,6 +44,12 @@ def load_and_preprocess_test_data() -> pd.DataFrame:
         client_df = pd.read_sql_query(
             "SELECT * FROM clients WHERE client_id IN (SELECT client_id FROM temp_test_ids)", conn
         )
+        gt_df = pd.read_sql_query(
+            'SELECT client_id, "default" FROM ground_truth WHERE client_id IN (SELECT client_id FROM temp_test_ids)',
+            conn,
+        )
+        client_df = pd.merge(client_df, gt_df, on="client_id")
+
         history_df = pd.read_sql_query(
             "SELECT * FROM payment_history WHERE client_id IN (SELECT client_id FROM temp_test_ids)", conn
         )

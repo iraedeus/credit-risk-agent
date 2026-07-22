@@ -27,8 +27,9 @@ class TestLoadData:
         mock_connect.return_value.__enter__.return_value = mock_conn
 
         client_df = pd.DataFrame({"client_id": [1, 2], "age": [30, 40]})
+        gt_df = pd.DataFrame({"client_id": [1, 2], "default": [0, 1]})
         history_df = pd.DataFrame({"client_id": [1, 2], "month": [1, 1]})
-        mock_read_sql.side_effect = [client_df, history_df]
+        mock_read_sql.side_effect = [client_df, gt_df, history_df]
 
         merged_df = pd.DataFrame({"client_id": [1, 2], "age": [30, 40], "month": [1, 1]})
         mock_preprocess.return_value = merged_df
@@ -37,7 +38,7 @@ class TestLoadData:
         result = load_and_preprocess_data()
 
         # Assert
-        assert mock_read_sql.call_count == 2
+        assert mock_read_sql.call_count == 3
         mock_preprocess.assert_called_once()
         assert list(result["client_id"]) == [1, 2]
 
@@ -61,8 +62,9 @@ class TestLoadData:
         mock_read_csv.return_value = test_ids_df
 
         client_df = pd.DataFrame({"client_id": [101], "age": [25]})
+        gt_df = pd.DataFrame({"client_id": [101], "default": [0]})
         history_df = pd.DataFrame({"client_id": [101], "month": [1]})
-        mock_read_sql.side_effect = [client_df, history_df]
+        mock_read_sql.side_effect = [client_df, gt_df, history_df]
 
         mock_preprocess.side_effect = lambda df: df
 

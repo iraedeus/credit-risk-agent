@@ -28,7 +28,7 @@ def get_client_financial_metrics(client_id: int) -> str:
     try:
         with sqlite3.connect(DATABASE_PATH) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT limit_bal, age, default FROM clients WHERE client_id = ?", (client_id,))
+            cursor.execute("SELECT limit_bal, age FROM clients WHERE client_id = ?", (client_id,))
             client_row = cursor.fetchone()
             if not client_row:
                 return f"Клиент с client_id = {client_id} не был найден в базе данных."

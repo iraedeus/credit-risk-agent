@@ -68,9 +68,16 @@ class TestDatasetDownloaderIntegration:
             cursor.execute("SELECT * FROM clients ORDER BY client_id;")
             clients = cursor.fetchall()
             assert len(clients) == 2
-            # Columns: client_id, limit_bal, sex, education, marriage, age, default
-            assert clients[0] == (101, 50000.0, 1, 2, 1, 30, 0)
-            assert clients[1] == (102, 100000.0, 2, 1, 2, 25, 1)
+            # Columns: client_id, limit_bal, sex, education, marriage, age
+            assert clients[0] == (101, 50000.0, 1, 2, 1, 30)
+            assert clients[1] == (102, 100000.0, 2, 1, 2, 25)
+
+            # Check ground_truth table
+            cursor.execute("SELECT * FROM ground_truth ORDER BY client_id;")
+            gt = cursor.fetchall()
+            assert len(gt) == 2
+            assert gt[0] == (101, 0)
+            assert gt[1] == (102, 1)
 
             # Check payment_history table
             cursor.execute("SELECT * FROM payment_history ORDER BY client_id, month;")

@@ -36,9 +36,14 @@ class TestTrainScriptIntegration:
                 "education": [1, 2, 3, 4, 1, 2, 3, 4, 1, 2],
                 "marriage": [1, 2] * 5,
                 "age": [25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
-                "default": [0, 0, 1, 0, 1, 0, 0, 1, 0, 1],
             }
             pd.DataFrame(clients_data).to_sql("clients", conn, index=False)
+
+            gt_data = {
+                "client_id": list(range(1, 11)),
+                "default": [0, 0, 1, 0, 1, 0, 0, 1, 0, 1],
+            }
+            pd.DataFrame(gt_data).to_sql("ground_truth", conn, index=False)
 
             history_records = []
             for client_id in range(1, 11):

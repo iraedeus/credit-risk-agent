@@ -55,7 +55,15 @@ def main() -> None:
 
         cursor.execute("PRAGMA foreign_keys = ON;")
         cursor.execute("DROP TABLE IF EXISTS payment_history;")
+        cursor.execute("DROP TABLE IF EXISTS ground_truth;")
         cursor.execute("DROP TABLE IF EXISTS clients;")
+
+        cursor.execute("""CREATE TABLE ground_truth (
+            client_id INTEGER PRIMARY KEY,
+            'default' INTEGER,
+
+            FOREIGN KEY (client_id) REFERENCES clients ON DELETE CASCADE
+            );""")
 
         cursor.execute("""CREATE TABLE clients (
             client_id INTEGER PRIMARY KEY,
@@ -63,8 +71,7 @@ def main() -> None:
             sex INTEGER,
             education INTEGER,
             marriage INTEGER,
-            age INTEGER,
-            'default' INTEGER
+            age INTEGER
             );""")
 
         cursor.execute("""CREATE TABLE payment_history (
@@ -80,7 +87,8 @@ def main() -> None:
 
         conn.commit()
 
-        client_df.to_sql("clients", conn, if_exists="append", index=False)
+        client_df.drop(columns=["default"]).to_sql("clients", conn, if_exists="append", index=False)
+        client_df[["client_id", "default"]].to_sql("ground_truth", conn, if_exists="append", index=False)
         final_history_df.to_sql("payment_history", conn, if_exists="append", index=False)
 
     # 4. Delete the temporary CSV file
