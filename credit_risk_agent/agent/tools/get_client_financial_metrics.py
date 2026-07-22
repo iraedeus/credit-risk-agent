@@ -45,7 +45,7 @@ def get_client_financial_metrics(client_id: int) -> str:
                            SUM(bill_amt) as sum_bill,
                            MAX(pay_status) as max_delay_status,
                            SUM(CASE WHEN pay_status > 0 THEN 1 ELSE 0 END) as delay_months_count
-                           FROM payments_history WHERE client_id = ?
+                           FROM payment_history WHERE client_id = ?
                            """,
                 (client_id,),
             )
