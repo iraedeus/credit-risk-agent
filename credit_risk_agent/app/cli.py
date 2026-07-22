@@ -1,5 +1,9 @@
 import argparse
 
+import pandas as pd
+
+from credit_risk_agent.config import ARTIFACTS_PATH
+
 
 def score_client_command(client_id: int) -> None:
     pass
@@ -14,7 +18,10 @@ def chat_agent(verbose: bool = False) -> None:
 
 
 def list_test_clients(limit: int = 10) -> None:
-    pass
+    test_clients = pd.read_csv(ARTIFACTS_PATH / "test_clients.csv")
+    ids = test_clients["client_id"].head(limit).astype(str).to_list()
+    print(f"Доступные ID клиентов (первые {len(ids)}):")
+    print(", ".join(ids))
 
 
 def main() -> None:

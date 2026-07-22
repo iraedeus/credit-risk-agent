@@ -20,6 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
+credit-risk-agent = "credit_risk_agent.app.cli:main"
 download-dataset = "scripts.download_dataset:main"
 train-model = "scripts.train:main"
 
