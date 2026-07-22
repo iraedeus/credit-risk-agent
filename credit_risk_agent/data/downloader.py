@@ -10,54 +10,6 @@ import kaggle  # noqa: E402
 from credit_risk_agent.config import CLIENT_COLUMNS, DATA_PATH, DATABASE_PATH
 
 
-def wide_to_long(df: pd.DataFrame, column_prefix: str) -> pd.DataFrame:
-    """
-    Transform columns matching a prefix from wide format to long format.
-
-    Identifies all columns that start with the given prefix followed by digits,
-    melts them into a long format using the 'ID' column as identifier, and converts
-    the column names into integer month numbers.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        The input DataFrame containing the wide format data.
-    column_prefix : str
-        The prefix to filter columns by (e.g., 'PAY_', 'BILL_AMT').
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame in long format containing the 'ID', 'month', and melted column.
-    """
-
-    # Find all columns matching the prefix (e.g., PAY_1, PAY_2...)
-    value_vars = [
-        col for col in df.columns if col.startswith(column_prefix) and col.replace(column_prefix, "").isdigit()
-    ]
-    if not value_vars:
-        raise KeyError(f"No columns matching prefix {column_prefix} found.")
-
-    # Select only the ID and matching columns to behave like melt
-    df_sub = df[["ID", *value_vars]]
-
-    # If the prefix has a trailing underscore (like PAY_), we temporarily rename the columns to remove it
-    if column_prefix.endswith("_"):
-        stub = column_prefix[:-1]
-        sep = "_"
-    else:
-        stub = column_prefix
-        sep = ""
-
-    df_long = pd.wide_to_long(df_sub, stubnames=[stub], i="ID", j="month", sep=sep).reset_index()
-
-    # If we stripped the trailing underscore, rename the column back
-    if column_prefix.endswith("_"):
-        df_long = df_long.rename(columns={stub: column_prefix})
-
-    return df_long
-
-
 def main() -> None:
     """
     Execute the ETL pipeline for the Credit Card dataset.
