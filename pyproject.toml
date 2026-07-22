@@ -19,13 +19,17 @@ dependencies = [
     "python-dotenv (>=1.2.2,<2.0.0)",
 ]
 
+[project.scripts]
+download-dataset = "scripts.download_dataset:main"
+train-model = "scripts.train:main"
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-package-mode = false
+package-mode = true
 
 [[tool.poetry.source]]
 name = "pytorch-cpu"

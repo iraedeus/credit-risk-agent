@@ -94,11 +94,15 @@ def test_prepare_dataset_invalid_sequence_lengths() -> None:
         prepare_dataset(df)
 
 
-def test_credit_dataset_memory_sharing() -> None:
+def test_credit_dataset_memory_independence() -> None:
+    """Verify that CreditDataset copies input numpy arrays, ensuring tensor memory independence."""
     # Arrange
     sequences = np.random.randn(2, 6, 3).astype(np.float32)
     static_features = np.random.randn(2, 14).astype(np.float32)
     labels = np.array([0.0, 1.0], dtype=np.float32)
+
+    original_seq_val = float(sequences[0, 0, 0])
+    original_static_val = float(static_features[0, 0])
 
     # Act
     dataset = CreditDataset(sequences, static_features, labels)
@@ -107,6 +111,8 @@ def test_credit_dataset_memory_sharing() -> None:
     sequences[0, 0, 0] = 999.0
     static_features[0, 0] = 888.0
 
-    # Assert
-    assert dataset.sequences[0, 0, 0].item() == 999.0
-    assert dataset.static_features[0, 0].item() == 888.0
+    # Assert - Tensors must retain their original copied values
+    assert dataset.sequences[0, 0, 0].item() == pytest.approx(original_seq_val)
+    assert dataset.static_features[0, 0].item() == pytest.approx(original_static_val)
+    assert dataset.sequences[0, 0, 0].item() != 999.0
+    assert dataset.static_features[0, 0].item() != 888.0

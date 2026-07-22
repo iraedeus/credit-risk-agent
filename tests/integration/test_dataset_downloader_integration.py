@@ -4,22 +4,22 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from credit_risk_agent.data import downloader
-from credit_risk_agent.data.downloader import main
+from scripts import download_dataset
+from scripts.download_dataset import main
 
 
 def test_main_etl_flow(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     # 1. Arrange: Setup temporary data path and mock Kaggle API
     temp_data_dir = tmp_path
-    monkeypatch.setattr(downloader, "DATA_PATH", temp_data_dir)
-    monkeypatch.setattr(downloader, "DATABASE_PATH", temp_data_dir / "database.db")
+    monkeypatch.setattr(download_dataset, "DATA_PATH", temp_data_dir)
+    monkeypatch.setattr(download_dataset, "DATABASE_PATH", temp_data_dir / "database.db")
 
     # Mock Kaggle authentication and dataset download
     mock_authenticate = MagicMock()
     mock_download = MagicMock()
 
-    monkeypatch.setattr(downloader.kaggle.api, "authenticate", mock_authenticate)
-    monkeypatch.setattr(downloader.kaggle.api, "dataset_download_files", mock_download)
+    monkeypatch.setattr(download_dataset.kaggle.api, "authenticate", mock_authenticate)
+    monkeypatch.setattr(download_dataset.kaggle.api, "dataset_download_files", mock_download)
 
     # Define a function to simulate downloading by writing a mock CSV file
     def write_mock_csv(*args: any, **kwargs: any) -> None:

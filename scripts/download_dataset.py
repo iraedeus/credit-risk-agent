@@ -3,11 +3,11 @@ import sqlite3
 import pandas as pd
 from dotenv import load_dotenv
 
+from credit_risk_agent.config import CLIENT_COLUMNS, DATA_PATH, DATABASE_PATH
+
 load_dotenv()
 
 import kaggle  # noqa: E402
-
-from credit_risk_agent.config import CLIENT_COLUMNS, DATA_PATH, DATABASE_PATH
 
 
 def main() -> None:

@@ -1,3 +1,4 @@
+import argparse
 import sqlite3
 from pathlib import Path
 
@@ -124,7 +125,29 @@ def check_model_quality(
     print(classification_report(all_targets, binary_preds, target_names=["Non-default", "Default"]))
 
 
-if __name__ == "__main__":
+def main():
+    parser = argparse.ArgumentParser(description="Скрипт для загрузки данных и обучения модели")
+    parser.add_argument(
+        "--view-quality", action="store_true", help="Выдать отчёт качества обученной модели на тестовых данных"
+    )
+    args = parser.parse_args()
+
+    view_quality = args.view_quality
+
+    if view_quality:
+        print("Загрузка сохраненной модели и оценка качества на тестовой выборке...")
+        test_df = load_and_preprocess_test_data()
+        scaler = StandardScaler.load(SCALER_PATH)
+        test_df = scaler.transform(test_df, SCALER_COLS)
+
+        test_dataset = prepare_dataset(test_df, id_col=ID_COL, target_col=TARGET_COL)
+        test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+        model = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
+        model.load_state_dict(torch.load(MODEL_SAVE_PATH))
+        check_model_quality(model, test_loader)
+        return
+
     df = load_and_preprocess_data()
     train_df, test_df = split_and_save_ids(df)
 
@@ -135,3 +158,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False)
     model = train_model(train_loader, MODEL_SAVE_PATH)
     check_model_quality(model, test_loader)
+
+
+if __name__ == "__main__":
+    main()

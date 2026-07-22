@@ -4,7 +4,7 @@ from credit_risk_agent.config import MODEL_SAVE_PATH, SCALER_COLS, SCALER_PATH
 from credit_risk_agent.data.standard_scaler import StandardScaler
 from credit_risk_agent.model.dataset import prepare_dataset
 from credit_risk_agent.model.model import CreditDefaultPredictor
-from credit_risk_agent.model.train import load_and_preprocess_test_data
+from scripts.train import load_and_preprocess_test_data
 
 
 def run_model(client_id: int) -> str:
