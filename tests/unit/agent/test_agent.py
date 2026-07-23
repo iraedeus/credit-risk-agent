@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 
+import pytest
 from gigachat.models import FunctionCall, Messages, MessagesRole
 
 from credit_risk_agent.agent.agent import DEFAULT_SYSTEM_PROMPT, CreditRiskAgent
@@ -145,3 +146,36 @@ class TestCreditRiskAgent:
         # Assert
         assert result == "Достигнуто максимальное количество итераций без итогового вердикта."
         assert mock_client.chat.call_count == 2
+
+    def test_agent_run_verbose_output(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Verify intermediate reasoning steps and tool execution logs are printed when verbose=True."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_tool = Tool(mock_tool_func, name="mock_tool")
+
+        # Step 1: Model returns thought + tool call
+        msg_1 = Messages(
+            role=MessagesRole.ASSISTANT,
+            content="Checking metrics first...",
+            function_call=FunctionCall(name="mock_tool", arguments={"client_id": 101}),
+        )
+
+        # Step 2: Model returns final decision
+        msg_2 = Messages(role=MessagesRole.ASSISTANT, content="Final decision: APPROVED")
+
+        mock_resp_1 = MagicMock(choices=[MagicMock(message=msg_1)])
+        mock_resp_2 = MagicMock(choices=[MagicMock(message=msg_2)])
+        mock_client.chat.side_effect = [mock_resp_1, mock_resp_2]
+
+        agent = CreditRiskAgent(client=mock_client, tools={"mock_tool": mock_tool})
+
+        # Act
+        result = agent.run("Evaluate client 101", verbose=True)
+
+        # Assert
+        assert result == "Final decision: APPROVED"
+        captured = capsys.readouterr()
+        assert "[Мысль 1]: Checking metrics first..." in captured.out
+        assert "[Действие 1]: Вызов инструмента mock_tool" in captured.out
+        assert "Аргументы: {'client_id': 101}" in captured.out
+        assert "[Наблюдение 1]: Metrics for client 101" in captured.out
