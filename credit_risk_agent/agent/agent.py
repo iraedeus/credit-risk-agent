@@ -54,7 +54,7 @@ class CreditRiskAgent:
         self.system_prompt = system_prompt
         self.max_iterations = max_iterations
 
-    def run(self, user_prompt: str) -> str:
+    def run(self, user_prompt: str, verbose: bool = False) -> str:
         """
         Execute the ReAct agent loop for a given user prompt.
 
@@ -73,15 +73,22 @@ class CreditRiskAgent:
             Messages(role=MessagesRole.USER, content=user_prompt),
         ]
 
-        for _ in range(self.max_iterations):
+        for i in range(self.max_iterations):
             response = self.client.chat(Chat(messages=messages, functions=self.functions))
 
             message = response.choices[0].message
             messages.append(message)
 
             if message.function_call:
+                if message.content and verbose:
+                    print(f"[Мысль {i + 1}]: {message.content}")
+
                 func_name = message.function_call.name
                 func_args = message.function_call.arguments or {}
+
+                if verbose:
+                    print(f"[Действие {i + 1}]: Вызов инструмента {func_name}")
+                    print(f"Аргументы: {func_args}")
 
                 if isinstance(func_args, str):
                     try:
@@ -96,6 +103,9 @@ class CreditRiskAgent:
                     tool_res = self.tools[func_name](**func_args)
                 else:
                     tool_res = f"Ошибка: Инструмент '{func_name}' не найден."
+
+                if verbose:
+                    print(f"[Наблюдение {i + 1}]: {tool_res}\n\n" + "=" * 50 + "\n")
 
                 content_json = json.dumps({"result": tool_res}, ensure_ascii=False)
                 messages.append(Messages(role=MessagesRole.FUNCTION, name=func_name, content=content_json))
