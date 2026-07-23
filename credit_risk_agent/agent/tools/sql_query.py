@@ -1,6 +1,6 @@
 import sqlite3
 
-from credit_risk_agent.config import DATABASE_PATH
+from credit_risk_agent.config import RAW_DATABASE_PATH
 
 
 def sql_query(query: str) -> str:
@@ -33,7 +33,7 @@ def sql_query(query: str) -> str:
         with column headers, or an error message if the query fails.
     """
     try:
-        with sqlite3.connect(DATABASE_PATH) as conn:
+        with sqlite3.connect(RAW_DATABASE_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute(query)
 

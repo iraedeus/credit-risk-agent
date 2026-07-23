@@ -6,10 +6,9 @@ import torch
 
 from scripts.train import (
     check_model_quality,
-    load_and_preprocess_data,
-    load_and_preprocess_test_data,
+    load_and_preprocess_from_db,
     main,
-    split_and_save_ids,
+    save_split_db,
     train_model,
 )
 
@@ -18,103 +17,63 @@ class TestLoadData:
     @patch("scripts.train.preprocess")
     @patch("scripts.train.pd.read_sql_query")
     @patch("scripts.train.sqlite3.connect")
-    def test_load_and_preprocess_data_success(
+    def test_load_and_preprocess_from_db_success(
         self, mock_connect: MagicMock, mock_read_sql: MagicMock, mock_preprocess: MagicMock
     ) -> None:
-        """Verify reading clients and payment history tables, merging them, and running preprocessing."""
+        """Verify loading clients, payment history, and ground truth from SQLite database, merging and preprocessing."""
         # Arrange
         mock_conn = MagicMock()
         mock_connect.return_value.__enter__.return_value = mock_conn
 
         client_df = pd.DataFrame({"client_id": [1, 2], "age": [30, 40]})
-        gt_df = pd.DataFrame({"client_id": [1, 2], "default": [0, 1]})
         history_df = pd.DataFrame({"client_id": [1, 2], "month": [1, 1]})
-        mock_read_sql.side_effect = [client_df, gt_df, history_df]
+        gt_df = pd.DataFrame({"client_id": [1, 2], "default": [0, 1]})
+        mock_read_sql.side_effect = [client_df, history_df, gt_df]
 
-        merged_df = pd.DataFrame({"client_id": [1, 2], "age": [30, 40], "month": [1, 1]})
+        merged_df = pd.DataFrame({"client_id": [1, 2], "age": [30, 40], "month": [1, 1], "default": [0, 1]})
         mock_preprocess.return_value = merged_df
 
         # Act
-        result = load_and_preprocess_data()
+        result = load_and_preprocess_from_db(Path("dummy.db"))
 
         # Assert
         assert mock_read_sql.call_count == 3
         mock_preprocess.assert_called_once()
         assert list(result["client_id"]) == [1, 2]
 
-    @patch("scripts.train.preprocess")
+
+class TestSplitAndSave:
+    @patch("scripts.train.pd.DataFrame.to_sql")
+    @patch("scripts.train.train_test_split")
     @patch("scripts.train.pd.read_sql_query")
-    @patch("scripts.train.pd.read_csv")
     @patch("scripts.train.sqlite3.connect")
-    def test_load_and_preprocess_test_data_success(
+    def test_save_split_db_success(
         self,
         mock_connect: MagicMock,
-        mock_read_csv: MagicMock,
         mock_read_sql: MagicMock,
-        mock_preprocess: MagicMock,
+        mock_split: MagicMock,
+        mock_to_sql: MagicMock,
     ) -> None:
-        """Verify test clients filtering via temp_test_ids SQLite table and dropping table upon completion."""
+        """Verify reading raw database tables, performing stratified train/test split,
+        and saving to SQLite databases."""
         # Arrange
         mock_conn = MagicMock()
         mock_connect.return_value.__enter__.return_value = mock_conn
 
-        test_ids_df = pd.DataFrame({"client_id": [101]})
-        mock_read_csv.return_value = test_ids_df
+        raw_clients = pd.DataFrame({"client_id": [1, 2], "age": [30, 40]})
+        raw_history = pd.DataFrame({"client_id": [1, 2], "month": [1, 1]})
+        raw_gt = pd.DataFrame({"client_id": [1, 2], "default": [0, 1]})
+        mock_read_sql.side_effect = [raw_clients, raw_history, raw_gt]
 
-        client_df = pd.DataFrame({"client_id": [101], "age": [25]})
-        gt_df = pd.DataFrame({"client_id": [101], "default": [0]})
-        history_df = pd.DataFrame({"client_id": [101], "month": [1]})
-        mock_read_sql.side_effect = [client_df, gt_df, history_df]
-
-        mock_preprocess.side_effect = lambda df: df
+        mock_split.return_value = (pd.Series([1]), pd.Series([2]))
 
         # Act
-        result = load_and_preprocess_test_data()
+        save_split_db()
 
         # Assert
-        mock_read_csv.assert_called_once()
-        mock_conn.execute.assert_called_with("DROP TABLE temp_test_ids")
-        mock_preprocess.assert_called_once()
-        assert len(result) == 1
-
-
-class TestSplitAndSave:
-    @patch("scripts.train.pd.Series.to_csv")
-    @patch("scripts.train.StandardScaler")
-    @patch("scripts.train.train_test_split")
-    def test_split_and_save_ids_success(
-        self,
-        mock_split: MagicMock,
-        mock_scaler_cls: MagicMock,
-        mock_to_csv: MagicMock,
-    ) -> None:
-        """Verify train/test splitting, scaler fitting/saving/transformation, and test_clients.csv output."""
-        # Arrange
-        df = pd.DataFrame(
-            {
-                "client_id": [1, 2, 3, 4, 5],
-                "default": [0, 0, 1, 0, 1],
-                "limit_bal": [10.0, 20.0, 30.0, 40.0, 50.0],
-            }
-        )
-
-        mock_split.return_value = (pd.Series([1, 2, 3, 4]), pd.Series([5]))
-
-        mock_scaler_instance = MagicMock()
-        mock_scaler_instance.transform.side_effect = lambda data, cols: data
-        mock_scaler_cls.return_value.fit.return_value = mock_scaler_instance
-
-        # Act
-        train_result, test_result = split_and_save_ids(df)
-
-        # Assert
+        assert mock_read_sql.call_count == 3
         mock_split.assert_called_once()
-        mock_scaler_cls.return_value.fit.assert_called_once()
-        mock_scaler_instance.save.assert_called_once()
-        assert mock_scaler_instance.transform.call_count == 2
-        mock_to_csv.assert_called_once()
-        assert len(train_result) == 4
-        assert len(test_result) == 1
+        assert mock_to_sql.call_count == 6
 
 
 class TestTrainModel:
@@ -191,14 +150,16 @@ class TestMainCLI:
     @patch("scripts.train.check_model_quality")
     @patch("scripts.train.train_model")
     @patch("scripts.train.prepare_dataset")
-    @patch("scripts.train.split_and_save_ids")
-    @patch("scripts.train.load_and_preprocess_data")
+    @patch("scripts.train.StandardScaler")
+    @patch("scripts.train.load_and_preprocess_from_db")
+    @patch("scripts.train.save_split_db")
     @patch("argparse.ArgumentParser.parse_args")
     def test_main_default_training_mode(
         self,
         mock_parse_args: MagicMock,
-        mock_load_data: MagicMock,
-        mock_split: MagicMock,
+        mock_save_split: MagicMock,
+        mock_load_db: MagicMock,
+        mock_scaler_cls: MagicMock,
         mock_prep_ds: MagicMock,
         mock_train: MagicMock,
         mock_check_quality: MagicMock,
@@ -209,8 +170,12 @@ class TestMainCLI:
         mock_args.view_quality = False
         mock_parse_args.return_value = mock_args
 
-        mock_load_data.return_value = MagicMock()
-        mock_split.return_value = (MagicMock(), MagicMock())
+        mock_df = MagicMock()
+        mock_load_db.return_value = mock_df
+
+        mock_scaler_instance = MagicMock()
+        mock_scaler_instance.transform.return_value = mock_df
+        mock_scaler_cls.return_value.fit.return_value = mock_scaler_instance
 
         mock_dataset = MagicMock()
         mock_dataset.__len__.return_value = 5
@@ -222,8 +187,8 @@ class TestMainCLI:
         main()
 
         # Assert
-        mock_load_data.assert_called_once()
-        mock_split.assert_called_once()
+        mock_save_split.assert_called_once()
+        assert mock_load_db.call_count == 2
         mock_train.assert_called_once()
         mock_check_quality.assert_called_once()
 
@@ -231,14 +196,16 @@ class TestMainCLI:
     @patch("scripts.train.CreditDefaultPredictor")
     @patch("scripts.train.prepare_dataset")
     @patch("scripts.train.StandardScaler.load")
-    @patch("scripts.train.load_and_preprocess_test_data")
+    @patch("scripts.train.load_and_preprocess_from_db")
+    @patch("scripts.train.save_split_db")
     @patch("scripts.train.torch.load")
     @patch("argparse.ArgumentParser.parse_args")
     def test_main_view_quality_mode(
         self,
         mock_parse_args: MagicMock,
         mock_torch_load: MagicMock,
-        mock_load_test: MagicMock,
+        mock_save_split: MagicMock,
+        mock_load_db: MagicMock,
         mock_scaler_load: MagicMock,
         mock_prep_ds: MagicMock,
         mock_predictor: MagicMock,
@@ -251,7 +218,7 @@ class TestMainCLI:
         mock_parse_args.return_value = mock_args
 
         mock_test_df = MagicMock()
-        mock_load_test.return_value = mock_test_df
+        mock_load_db.return_value = mock_test_df
         mock_scaler = MagicMock()
         mock_scaler.transform.return_value = mock_test_df
         mock_scaler_load.return_value = mock_scaler
@@ -264,6 +231,7 @@ class TestMainCLI:
         main()
 
         # Assert
-        mock_load_test.assert_called_once()
+        mock_save_split.assert_called_once()
+        mock_load_db.assert_called_once()
         mock_scaler_load.assert_called_once()
         mock_check_quality.assert_called_once()

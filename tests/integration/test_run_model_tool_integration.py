@@ -2,13 +2,13 @@ import pandas as pd
 import pytest
 
 from credit_risk_agent.agent.tools import run_model
-from credit_risk_agent.config import DATA_PATH, DATABASE_PATH, MODEL_SAVE_PATH, SCALER_PATH
+from credit_risk_agent.config import DATA_PATH, MODEL_SAVE_PATH, RAW_DATABASE_PATH, SCALER_PATH
 
 
 class TestRunModelToolIntegration:
     def test_run_model_integration_smoke(self) -> None:
         """Smoke test for run_model tool using real model weights and dataset artifacts."""
-        if not (MODEL_SAVE_PATH.exists() and SCALER_PATH.exists() and DATABASE_PATH.exists()):
+        if not (MODEL_SAVE_PATH.exists() and SCALER_PATH.exists() and RAW_DATABASE_PATH.exists()):
             pytest.skip("Model or dataset files are missing, skipping integration test.")
 
         test_clients_path = DATA_PATH / "test_clients.csv"

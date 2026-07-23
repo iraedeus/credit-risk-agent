@@ -14,7 +14,7 @@ class TestDatasetDownloaderIntegration:
         # 1. Arrange: Setup temporary data path and mock Kaggle API
         temp_data_dir = tmp_path
         monkeypatch.setattr(download_dataset, "DATA_PATH", temp_data_dir)
-        monkeypatch.setattr(download_dataset, "DATABASE_PATH", temp_data_dir / "database.db")
+        monkeypatch.setattr(download_dataset, "RAW_DATABASE_PATH", temp_data_dir / "database.db")
 
         # Mock Kaggle authentication and dataset download
         mock_authenticate = MagicMock()

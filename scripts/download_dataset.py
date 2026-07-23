@@ -3,7 +3,7 @@ import sqlite3
 import pandas as pd
 from dotenv import load_dotenv
 
-from credit_risk_agent.config import CLIENT_COLUMNS, DATA_PATH, DATABASE_PATH
+from credit_risk_agent.config import CLIENT_COLUMNS, DATA_PATH, RAW_DATABASE_PATH
 
 load_dotenv()
 
@@ -50,7 +50,7 @@ def main() -> None:
     )
 
     # 3. Save data into the SQLite database
-    with sqlite3.connect(DATABASE_PATH) as conn:
+    with sqlite3.connect(RAW_DATABASE_PATH) as conn:
         cursor = conn.cursor()
 
         cursor.execute("PRAGMA foreign_keys = ON;")

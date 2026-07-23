@@ -2,7 +2,7 @@ import sqlite3
 
 import pandas as pd
 
-from credit_risk_agent.config import ARTIFACTS_PATH, DATABASE_PATH
+from credit_risk_agent.config import ARTIFACTS_PATH, RAW_DATABASE_PATH
 
 
 def get_client_financial_metrics(client_id: int) -> str:
@@ -32,7 +32,7 @@ def get_client_financial_metrics(client_id: int) -> str:
         if client_id not in test_clients["client_id"].values:
             return f"Клиент с client_id = {client_id} не был найден в базе данных."
 
-        with sqlite3.connect(DATABASE_PATH) as conn:
+        with sqlite3.connect(RAW_DATABASE_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT limit_bal, age FROM clients WHERE client_id = ?", (client_id,))
             client_row = cursor.fetchone()
