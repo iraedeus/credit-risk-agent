@@ -1,11 +1,13 @@
 import sqlite3
 
-from credit_risk_agent.config import DATABASE_PATH
+import pandas as pd
+
+from credit_risk_agent.config import ARTIFACTS_PATH, DATABASE_PATH
 
 
 def get_client_financial_metrics(client_id: int) -> str:
     """
-    Calculate and return key financial metrics for a specific client.
+    Calculate and return key financial metrics for a specific test client.
 
     Retrieves demographic and payment history data for the given client ID from
     the SQLite database, then computes aggregated financial metrics including
@@ -26,6 +28,10 @@ def get_client_financial_metrics(client_id: int) -> str:
         or an error/not-found message if the client data cannot be retrieved.
     """
     try:
+        test_clients = pd.read_csv(ARTIFACTS_PATH / "test_clients.csv")
+        if client_id not in test_clients["client_id"].values:
+            return f"Клиент с client_id = {client_id} не был найден в базе данных."
+
         with sqlite3.connect(DATABASE_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT limit_bal, age FROM clients WHERE client_id = ?", (client_id,))
@@ -37,16 +43,16 @@ def get_client_financial_metrics(client_id: int) -> str:
 
             cursor.execute(
                 """
-                           SELECT
-                           AVG(bill_amt) as avg_bill,
-                           MAX(bill_amt) AS max_bill,
-                           AVG(pay_amt) AS avg_pay,
-                           SUM(pay_amt) AS sum_pay,
-                           SUM(bill_amt) as sum_bill,
-                           MAX(pay_status) as max_delay_status,
-                           SUM(CASE WHEN pay_status > 0 THEN 1 ELSE 0 END) as delay_months_count
-                           FROM payment_history WHERE client_id = ?
-                           """,
+                SELECT
+                    AVG(bill_amt) as avg_bill,
+                    MAX(bill_amt) AS max_bill,
+                    AVG(pay_amt) AS avg_pay,
+                    SUM(pay_amt) AS sum_pay,
+                    SUM(bill_amt) as sum_bill,
+                    MAX(pay_status) as max_delay_status,
+                    SUM(CASE WHEN pay_status > 0 THEN 1 ELSE 0 END) as delay_months_count
+                FROM payment_history WHERE client_id = ?
+                """,
                 (client_id,),
             )
 

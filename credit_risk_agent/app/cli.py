@@ -2,11 +2,13 @@ import argparse
 
 import pandas as pd
 
+from credit_risk_agent.agent.tools import get_client_financial_metrics, run_model
 from credit_risk_agent.config import ARTIFACTS_PATH
 
 
-def score_client_command(client_id: int) -> None:
-    pass
+def get_client_info(client_id: int) -> None:
+    print(run_model(client_id))
+    print(get_client_financial_metrics(client_id))
 
 
 def prompt_agent(prompt: str, verbose: bool = False) -> None:
@@ -31,10 +33,10 @@ def main() -> None:
 
     group = parser.add_mutually_exclusive_group(required=True)
 
-    group.add_argument("--client-id", "-c", type=int, help="Вывести отчёт для конкретного клиента")
+    group.add_argument("--get-client-info", "-c", type=int, help="Вывести отчёт для конкретного клиента по ID")
     group.add_argument("--prompt", "-p", type=str, help="Задать один вопрос агенту")
     group.add_argument("--chat", action="store_true", help="Начать чат с агентом")
-    group.add_argument("--list-clients", action="store_true", help="Вывести id первых 10 доступных клиентов")
+    group.add_argument("--list-clients", action="store_true", help="Вывести ID первых 10 доступных клиентов")
 
     parser.add_argument("--verbose", "-v", action="store_true", help="Показывать внутренние рассуждения агента")
 
@@ -43,8 +45,8 @@ def main() -> None:
     if args.verbose and not (args.prompt or args.chat):
         parser.error("Флаг --verbose (-v) доступен только с --prompt или --chat.")
 
-    if args.client_id:
-        score_client_command(args.client_id)
+    if args.get_client_info:
+        get_client_info(args.get_client_info)
     elif args.prompt:
         prompt_agent(args.prompt, args.verbose)
     elif args.chat:
