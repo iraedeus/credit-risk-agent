@@ -9,7 +9,7 @@ from credit_risk_agent.agent import run_model
 class TestRunModelTool:
     @patch("credit_risk_agent.agent.tools.run_model.prepare_dataset")
     @patch("credit_risk_agent.agent.tools.run_model.StandardScaler")
-    @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_test_data")
+    @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
     @patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
     @patch("torch.load")
     def test_run_model_success(
@@ -46,7 +46,7 @@ class TestRunModelTool:
         mock_model_instance.assert_called_once()
 
     @patch("credit_risk_agent.agent.tools.run_model.StandardScaler")
-    @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_test_data")
+    @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
     @patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
     @patch("torch.load")
     def test_run_model_client_not_found(
@@ -73,7 +73,7 @@ class TestRunModelTool:
 
     @patch("credit_risk_agent.agent.tools.run_model.prepare_dataset")
     @patch("credit_risk_agent.agent.tools.run_model.StandardScaler")
-    @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_test_data")
+    @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
     @patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
     @patch("torch.load")
     def test_run_model_formatting_precision(

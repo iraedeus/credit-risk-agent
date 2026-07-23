@@ -16,6 +16,8 @@ class TestTrainScriptIntegration:
         """Verify end-to-end training pipeline creates database artifacts, trains model, and serializes outputs."""
         # 1. Arrange: Setup synthetic database in tmp_path
         db_path = tmp_path / "database.db"
+        train_db_path = tmp_path / "train_database.db"
+        test_db_path = tmp_path / "test_database.db"
         artifacts_path = tmp_path / "artifacts"
         artifacts_path.mkdir()
 
@@ -23,9 +25,10 @@ class TestTrainScriptIntegration:
         model_path = artifacts_path / "model.pth"
 
         monkeypatch.setattr(train_module, "RAW_DATABASE_PATH", db_path)
+        monkeypatch.setattr(train_module, "TRAIN_DATABASE_PATH", train_db_path)
+        monkeypatch.setattr(train_module, "TEST_DATABASE_PATH", test_db_path)
         monkeypatch.setattr(train_module, "MODEL_SAVE_PATH", model_path)
         monkeypatch.setattr(train_module, "SCALER_PATH", scaler_path)
-        monkeypatch.setattr(train_module, "ARTIFACTS_PATH", artifacts_path)
 
         # Populate synthetic SQLite database with 10 clients and 60 payment records
         with sqlite3.connect(db_path) as conn:
@@ -60,8 +63,14 @@ class TestTrainScriptIntegration:
             pd.DataFrame(history_records).to_sql("payment_history", conn, index=False)
 
         # 2. Act: Execute ETL & Dataset preparation
-        df = train_module.load_and_preprocess_data()
-        train_df, test_df = train_module.split_and_save_ids(df)
+        train_module.save_split_db()
+        train_df = train_module.load_and_preprocess_from_db(train_db_path)
+        test_df = train_module.load_and_preprocess_from_db(test_db_path)
+
+        scaler = StandardScaler().fit(train_df, train_module.SCALER_COLS)
+        scaler.save(scaler_path)
+        train_df = scaler.transform(train_df, train_module.SCALER_COLS)
+        test_df = scaler.transform(test_df, train_module.SCALER_COLS)
 
         train_dataset = prepare_dataset(train_df, id_col="client_id", target_col="default")
         test_dataset = prepare_dataset(test_df, id_col="client_id", target_col="default")
@@ -77,7 +86,8 @@ class TestTrainScriptIntegration:
         # 3. Assert: Verify generated artifacts
         assert scaler_path.exists()
         assert model_path.exists()
-        assert (artifacts_path / "test_clients.csv").exists()
+        assert train_db_path.exists()
+        assert test_db_path.exists()
 
         loaded_scaler = StandardScaler.load(scaler_path)
         assert loaded_scaler.mean is not None
