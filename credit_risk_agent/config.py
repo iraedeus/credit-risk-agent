@@ -2,7 +2,7 @@ from pathlib import Path
 
 __ROOT__ = Path(__file__).parent.parent
 DATA_PATH = __ROOT__ / "data"
-DATABASE_PATH = DATA_PATH / "database.db"
+RAW_DATABASE_PATH = DATA_PATH / "database.db"
 
 CLIENT_COLUMNS = ["client_id", "limit_bal", "sex", "education", "marriage", "age", "default"]
 HISTORY_COLUMNS = ["client_id", "month", "pay_status", "bill_amt", "pay_amt"]

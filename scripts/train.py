@@ -13,10 +13,10 @@ from torch.utils.data import DataLoader
 from credit_risk_agent.config import (
     ARTIFACTS_PATH,
     BATCH_SIZE,
-    DATABASE_PATH,
     ID_COL,
     LEARNING_RATE,
     MODEL_SAVE_PATH,
+    RAW_DATABASE_PATH,
     SCALER_COLS,
     SCALER_PATH,
     TARGET_COL,
@@ -26,7 +26,7 @@ from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
 
 
 def load_and_preprocess_data() -> pd.DataFrame:
-    with sqlite3.connect(DATABASE_PATH) as conn:
+    with sqlite3.connect(RAW_DATABASE_PATH) as conn:
         client_df = pd.read_sql_query("SELECT * FROM clients", conn)
         gt_df = pd.read_sql_query('SELECT client_id, "default" FROM ground_truth', conn)
         client_df = pd.merge(client_df, gt_df, on="client_id")
@@ -39,7 +39,7 @@ def load_and_preprocess_data() -> pd.DataFrame:
 
 def load_and_preprocess_test_data() -> pd.DataFrame:
     test_df = pd.read_csv(ARTIFACTS_PATH / "test_clients.csv")
-    with sqlite3.connect(DATABASE_PATH) as conn:
+    with sqlite3.connect(RAW_DATABASE_PATH) as conn:
         test_df.to_sql("temp_test_ids", conn, if_exists="replace", index=False)
         client_df = pd.read_sql_query(
             "SELECT * FROM clients WHERE client_id IN (SELECT client_id FROM temp_test_ids)", conn

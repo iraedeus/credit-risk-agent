@@ -22,7 +22,7 @@ class TestTrainScriptIntegration:
         scaler_path = artifacts_path / "scaler.json"
         model_path = artifacts_path / "model.pth"
 
-        monkeypatch.setattr(train_module, "DATABASE_PATH", db_path)
+        monkeypatch.setattr(train_module, "RAW_DATABASE_PATH", db_path)
         monkeypatch.setattr(train_module, "MODEL_SAVE_PATH", model_path)
         monkeypatch.setattr(train_module, "SCALER_PATH", scaler_path)
         monkeypatch.setattr(train_module, "ARTIFACTS_PATH", artifacts_path)
