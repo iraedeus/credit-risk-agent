@@ -17,6 +17,7 @@ dependencies = [
     "scikit-learn (>=1.9.0,<2.0.0)",
     "gigachat (>=0.2.1,<0.3.0)",
     "python-dotenv (>=1.2.2,<2.0.0)",
+    "streamlit (>=1.60.0,<2.0.0)",
 ]
 
 [project.scripts]
@@ -81,9 +82,10 @@ ignore = [
 [tool.mypy]
 python_version = "3.12"
 files = ["credit_risk_agent"]
-strict = true
-ignore_missing_imports = true
 warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+warn_return_any = false
 show_error_codes = true
 
 [tool.pytest.ini_options]

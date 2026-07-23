@@ -1,26 +1,22 @@
 import sqlite3
 from unittest.mock import MagicMock, patch
 
-import pandas as pd
-
 from credit_risk_agent.agent.tools import get_client_financial_metrics
 
 
 class TestGetClientFinancialMetrics:
-    @patch("credit_risk_agent.agent.tools.get_client_financial_metrics.pd.read_csv")
-    def test_get_client_metrics_success(self, mock_read_csv: MagicMock) -> None:
+    def test_get_client_metrics_success(self) -> None:
         """Verify formatted string output of client financial metrics calculation."""
-        mock_read_csv.return_value = pd.DataFrame({"client_id": [101]})
         # Arrange
         mock_conn = MagicMock()
         mock_conn.__enter__.return_value = mock_conn
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
 
-        # First query: client row (limit_bal, age, default)
+        # First query: client row (limit_bal, age)
         # Second query: metrics (avg_bill, max_bill, avg_pay, sum_pay, sum_bill, max_delay_status, delay_months_count)
         mock_cursor.fetchone.side_effect = [
-            (100000.0, 30, 0),
+            (100000.0, 30),
             (10000.0, 20000.0, 5000.0, 30000.0, 60000.0, 2, 3),
         ]
 
@@ -39,10 +35,8 @@ class TestGetClientFinancialMetrics:
         assert "Максимальный статус просрочки за 6 мес.: 2" in result
         assert "Количество месяцев с просрочкой: 3 из 6" in result
 
-    @patch("credit_risk_agent.agent.tools.get_client_financial_metrics.pd.read_csv")
-    def test_get_client_metrics_client_not_found(self, mock_read_csv: MagicMock) -> None:
+    def test_get_client_metrics_client_not_found(self) -> None:
         """Verify error message when client ID is not found in database."""
-        mock_read_csv.return_value = pd.DataFrame({"client_id": [999]})
         # Arrange
         mock_conn = MagicMock()
         mock_conn.__enter__.return_value = mock_conn
@@ -57,17 +51,15 @@ class TestGetClientFinancialMetrics:
         # Assert
         assert result == "Клиент с client_id = 999 не был найден в базе данных."
 
-    @patch("credit_risk_agent.agent.tools.get_client_financial_metrics.pd.read_csv")
-    def test_get_client_metrics_no_payment_history(self, mock_read_csv: MagicMock) -> None:
+    def test_get_client_metrics_no_payment_history(self) -> None:
         """Verify message when client exists but payment history is absent."""
-        mock_read_csv.return_value = pd.DataFrame({"client_id": [102]})
         # Arrange
         mock_conn = MagicMock()
         mock_conn.__enter__.return_value = mock_conn
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
         mock_cursor.fetchone.side_effect = [
-            (50000.0, 25, 0),
+            (50000.0, 25),
             (None, None, None, None, None, None, None),
         ]
 
@@ -78,17 +70,15 @@ class TestGetClientFinancialMetrics:
         # Assert
         assert result == "Для клиента с client_id=102 отсутствует история платежей."
 
-    @patch("credit_risk_agent.agent.tools.get_client_financial_metrics.pd.read_csv")
-    def test_get_client_metrics_zero_division_safety(self, mock_read_csv: MagicMock) -> None:
+    def test_get_client_metrics_zero_division_safety(self) -> None:
         """Verify zero division safety when credit limit or total bills are zero."""
-        mock_read_csv.return_value = pd.DataFrame({"client_id": [103]})
         # Arrange
         mock_conn = MagicMock()
         mock_conn.__enter__.return_value = mock_conn
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
         mock_cursor.fetchone.side_effect = [
-            (0.0, 40, 1),
+            (0.0, 40),
             (0.0, 0.0, 0.0, 0.0, 0.0, 0, 0),
         ]
 
@@ -100,10 +90,8 @@ class TestGetClientFinancialMetrics:
         assert "Средняя утилизация лимита: 0.0%" in result
         assert "- Коэффициент покрытия выставляемых счетов (Repayment Rate): 0.0%" in result
 
-    @patch("credit_risk_agent.agent.tools.get_client_financial_metrics.pd.read_csv")
-    def test_get_client_metrics_database_error(self, mock_read_csv: MagicMock) -> None:
+    def test_get_client_metrics_database_error(self) -> None:
         """Verify database error handling when SQLite raises an exception."""
-        mock_read_csv.return_value = pd.DataFrame({"client_id": [104]})
         # Arrange
         mock_conn = MagicMock()
         mock_conn.__enter__.return_value = mock_conn

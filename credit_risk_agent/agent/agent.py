@@ -1,8 +1,17 @@
 import json
+from collections.abc import Iterator
 
 from gigachat import GigaChat
 from gigachat.models import Chat, Function, Messages, MessagesRole
 
+from credit_risk_agent.agent.events import (
+    AgentEvent,
+    ErrorEvent,
+    FinalEvent,
+    ObservationEvent,
+    ThoughtEvent,
+    ToolCallEvent,
+)
 from credit_risk_agent.agent.tools import GIGACHAT_FUNCTIONS, TOOLS
 from credit_risk_agent.agent.tools.tool import Tool
 
@@ -109,6 +118,51 @@ class CreditRiskAgent:
 
         self.history: list[Messages] = [Messages(role=MessagesRole.SYSTEM, content=system_prompt)]
 
+    def run_stream(self, user_prompt: str) -> Iterator[AgentEvent]:
+        self.history.append(Messages(role=MessagesRole.USER, content=user_prompt))
+
+        for i in range(self.max_iterations):
+            response = self.client.chat(Chat(messages=self.history, functions=self.functions))
+            message = response.choices[0].message
+            self.history.append(message)
+
+            if message.function_call:
+                if message.content:
+                    yield ThoughtEvent(content=message.content, step=i)
+
+                func_name = message.function_call.name
+                func_args = message.function_call.arguments or {}
+
+                if isinstance(func_args, str):
+                    try:
+                        func_args = json.loads(func_args)
+                    except json.JSONDecodeError:
+                        error = "Ошибка: невалидный формат JSON в аргументах инструмента."
+                        yield ErrorEvent(content=error)
+                        content_json = json.dumps({"result": error}, ensure_ascii=False)
+                        self.history.append(Messages(role=MessagesRole.FUNCTION, name=func_name, content=content_json))
+                        continue
+
+                yield ToolCallEvent(tool_name=func_name, tool_args=func_args, step=i)
+
+                if func_name in self.tools:
+                    tool_res = self.tools[func_name](**func_args)
+                    yield ObservationEvent(tool_name=func_name, content=str(tool_res), step=i)
+                else:
+                    error = f"Ошибка: Инструмент '{func_name}' не найден."
+                    yield ErrorEvent(content=error)
+                    self.history.append(Messages(role=MessagesRole.FUNCTION, content=error))
+                    continue
+
+                content_json = json.dumps({"result": tool_res}, ensure_ascii=False)
+                self.history.append(Messages(role=MessagesRole.FUNCTION, name=func_name, content=content_json))
+
+            else:
+                yield FinalEvent(content=message.content or "")
+                return
+
+        yield ErrorEvent(content="Достигнуто максимальное количество итераций без итогового вердикта.")
+
     def run(self, user_prompt: str, verbose: bool = False) -> str:
         """
         Execute the ReAct agent loop for a given user prompt.
@@ -124,48 +178,28 @@ class CreditRiskAgent:
             The agent's final text answer or termination message if max iterations are reached.
         """
 
-        self.history.append(Messages(role=MessagesRole.USER, content=user_prompt))
+        final_text = ""
+        for event in self.run_stream(user_prompt):
+            if verbose:
+                if isinstance(event, ThoughtEvent):
+                    print(f"[Мысль {event.step + 1 if event.step is not None else 'Unknown'}]: {event.content}")
+                elif isinstance(event, ToolCallEvent):
+                    print(
+                        f"[Действие {event.step + 1 if event.step is not None else 'Unknown'}]: "
+                        f"Вызов инструмента {event.tool_name}"
+                    )
+                    print(f"Аргументы: {event.tool_args}")
+                elif isinstance(event, ObservationEvent):
+                    print(
+                        f"[Наблюдение {event.step + 1 if event.step is not None else 'Unknown'}]: {event.content}\n\n"
+                        + "=" * 50
+                        + "\n"
+                    )
 
-        for i in range(self.max_iterations):
-            response = self.client.chat(Chat(messages=self.history, functions=self.functions))
-            message = response.choices[0].message
-            self.history.append(message)
+            if isinstance(event, (FinalEvent, ErrorEvent)):
+                final_text = event.content
 
-            if message.function_call:
-                if message.content and verbose:
-                    print(f"[Мысль {i + 1}]: {message.content}")
-
-                func_name = message.function_call.name
-                func_args = message.function_call.arguments or {}
-
-                if verbose:
-                    print(f"[Действие {i + 1}]: Вызов инструмента {func_name}")
-                    print(f"Аргументы: {func_args}")
-
-                if isinstance(func_args, str):
-                    try:
-                        func_args = json.loads(func_args)
-                    except json.JSONDecodeError:
-                        tool_res = "Ошибка: невалидный формат JSON в аргументах инструмента."
-                        content_json = json.dumps({"result": tool_res}, ensure_ascii=False)
-                        self.history.append(Messages(role=MessagesRole.FUNCTION, name=func_name, content=content_json))
-                        continue
-
-                if func_name in self.tools:
-                    tool_res = self.tools[func_name](**func_args)
-                else:
-                    tool_res = f"Ошибка: Инструмент '{func_name}' не найден."
-
-                if verbose:
-                    print(f"[Наблюдение {i + 1}]: {tool_res}\n\n" + "=" * 50 + "\n")
-
-                content_json = json.dumps({"result": tool_res}, ensure_ascii=False)
-                self.history.append(Messages(role=MessagesRole.FUNCTION, name=func_name, content=content_json))
-
-            else:
-                return message.content or ""
-
-        return "Достигнуто максимальное количество итераций без итогового вердикта."
+        return final_text
 
     def clear_history(self) -> None:
         self.history = [Messages(role=MessagesRole.SYSTEM, content=self.system_prompt)]
