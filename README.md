@@ -1,89 +1,160 @@
-# Архитектура проекта: AI-агент кредитного скоринга (AI Credit Risk Agent)
+# Credit Risk Intelligence System (`credit-risk-agent`)
 
-Этот документ содержит пошаговое описание каждого слоя системы для самостоятельной реализации проекта.
+A hybrid credit risk assessment and automated underwriting system combining a PyTorch deep learning model for default probability prediction with a GigaChat ReAct AI Agent for credit scoring analysis.
 
 ---
 
-## 📂 Структура проекта
-```text
-credit-risk-agent/
-│
-├── credit_risk_agent/            # Основной исходный пакет
-│   ├── agent/
-│   │   └── tools/                # Инструменты AI-агента
-│   │       ├── get_client_financial_metrics.py
-│   │       ├── run_model.py      # Скоринг моделью PyTorch
-│   │       └── sql_query.py      # Выполнение SQL-запросов
-│   ├── data/
-│   │   ├── downloader.py         # Скачивание датасета и импорт в SQLite
-│   │   ├── normalization.py      # Нормализация признаков
-│   │   └── preprocessing.py      # Предобработка данных
-│   ├── model/
-│   │   ├── dataset.py            # PyTorch Dataset
-│   │   ├── model.py              # Архитектура нейросети (LSTM/MLP)
-│   │   └── train.py              # Скрипт обучения
-│   ├── app/                      # Презентационный слой (Streamlit)
-│   └── config.py                 # Централизованная конфигурация
-│
-├── tests/                        # Тестовое покрытие
-│   ├── unit/                     # Модульные тесты (agent, data, model)
-│   └── integration/              # Интеграционные тесты
-│
-├── notebooks/                    # Jupyter ноутбуки для экспериментов
-│   ├── data_research.ipynb
-│   └── model_training.ipynb
-│
-├── pyproject.toml                # Управление зависимостями (Poetry) и настройки ruff/mypy
-├── poetry.lock
-└── README.md
+## Key Features
+
+- **ReAct AI Agent**: Conducts automated multi-step credit risk analysis using function calling and outputs structured underwriting reports.
+- **Real-Time Streaming**: Streams agent reasoning steps (`thought`), tool execution (`tool_call`), observations (`observation`), and final decisions (`final`).
+- **Hybrid ML Model (`CreditDefaultPredictor`)**: PyTorch neural network processing 6-month historical payment sequences alongside static demographic features.
+- **Relational Data Storage**: SQLite database for client profiles (`clients`), payment history (`payment_history`), and ground truth labels (`ground_truth`).
+- **Streamlit Web Application**: Interactive client profiling dashboard and real-time agent chat interface.
+- **CLI Suite**: Command-line interface for batch evaluation, interactive chat mode, and model evaluation.
+
+---
+
+## Tech Stack
+
+- **Core**: Python 3.12+, Poetry
+- **Machine Learning**: PyTorch, Scikit-Learn, Pandas, NumPy
+- **LLM & Agent**: GigaChat API SDK, ReAct Pattern
+- **Web UI**: Streamlit
+- **Database**: SQLite3
+- **Quality & Testing**: Pytest, Ruff, Mypy, Pre-commit
+
+---
+
+## Installation & Setup
+
+### 1. Prerequisites
+- Python `>= 3.12`
+- Poetry
+
+### 2. Installation
+```bash
+git clone https://github.com/iraedeus/credit-risk-agent.git
+cd credit-risk-agent
+poetry install
+```
+
+### 3. Environment Configuration
+Create a `.env` file from `.env.example`:
+```bash
+cp .env.example .env
+```
+
+Configure credentials in `.env`:
+```ini
+KAGGLE_USERNAME=your_kaggle_username
+KAGGLE_KEY=your_kaggle_key
+GIGACHAT_CREDENTIALS=your_gigachat_authorization_data
 ```
 
 ---
 
-## 🎛️ Описание слоев системы
+## Data Pipeline & Model Training
 
-### 1. Слой данных (Data Layer — SQL)
-**Задача**: Скачивание реального датасета и разворачивание реляционной структуры БД.
-*   **Источник данных**: [UCI Default of Credit Card Clients Dataset](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients).
-*   **СУБД**: SQLite (модуль `sqlite3` в Python).
-*   **Схема таблиц**:
-    1.  `clients` (ID, LIMIT_BAL, SEX, EDUCATION, MARRIAGE, AGE).
-    2.  `payment_history` (client_id, month_id, PAY_STATUS, BILL_AMT, PAY_AMT) — содержит 6 строк на каждого клиента (история за 6 месяцев).
-    3.  `target` (client_id, default_next_month) — бинарный флаг дефолта.
-*   **SQL-задачи**: Написать ETL-скрипт (`downloader.py`), который скачивает CSV, нормализует данные в соответствии со схемой выше и вставляет их в SQLite.
+### 1. Download & Prepare Dataset
+Download the UCI Credit Card dataset from Kaggle and populate the SQLite database:
+```bash
+poetry run download-dataset
+```
 
----
+### 2. Train Model
+Train the `CreditDefaultPredictor` PyTorch model (artifacts saved to `artifacts/model.pt` and `artifacts/scaler.json`):
+```bash
+poetry run train-model
+```
 
-### 2. Слой моделирования (Model Layer — PyTorch)
-**Задача**: Расчет вероятности дефолта (Probability of Default, PD) по временным рядам.
-*   **Вход**: Матрица признаков истории платежей клиента размера `(batch_size, 6_months, 3_features)` (PAY_STATUS, BILL_AMT, PAY_AMT).
-*   **Архитектура**: PyTorch `nn.LSTM` (или более простой `nn.GRU`), подключенный к полносвязному слою `nn.Linear` с функцией активации `Sigmoid`.
-*   **Выход**: Одно число от `0` до `1` — вероятность того, что клиент уйдет в дефолт в следующий месяц.
-*   **Функция потерь**: `BCELoss` (Binary Cross Entropy).
-*   **Валидация**: Разбиение данных на уровне `client_id` (80% Train / 20% Test) со стратификацией по целевой переменной. ID тестовых клиентов сохраняются в файл `test_clients.json` во избежание демонстрации переобучения.
-*   **Результат**: Скрипт `train.py`, который обучает модель, сохраняет веса в `model.pt` и файл с тестовыми ID `test_clients.json`.
+Evaluate model performance on the test split:
+```bash
+poetry run train-model --view-quality
+```
 
 ---
 
-### 3. Слой ИИ-Агента (Agent Layer — LLM & Tools)
-**Задача**: Обработка запросов пользователя на естественном языке, выбор инструментов и генерация выводов.
-*   **Движок (LLM)**: GigaChat API / YandexGPT API или локальный LLM (через Ollama).
-*   **Логика агента (ReAct)**: Шаблон "Мысль $\rightarrow$ Действие $\rightarrow$ Наблюдение". Можно использовать библиотеку `LangChain` / `LlamaIndex` или написать простой цикл на чистом Python.
-*   **Инструменты (Tools)**:
-    1.  `sql_query`: принимает строку-запрос SQL, выполняет в БД, возвращает результат в текстовом виде.
-    2.  `run_model`: принимает `client_id`, проверяет его наличие в `test_clients.json`, выгружает SQL-запросом историю заемщика, передает тензор в PyTorch-модель, возвращает вероятность дефолта.
-    3.  `get_client_financial_metrics`: расчёт ключевых финансовых метрик по истории клиента.
+## Usage
+
+### 1. Web Application (Streamlit)
+```bash
+poetry run streamlit run credit_risk_agent/app/main.py
+```
+Open `http://localhost:8501` to access:
+- **Client Profile**: Financial metrics, utilization trends, and payment discipline.
+- **AI Agent Chat**: Interactive chat interface with real-time reasoning visualization.
+
+### 2. Command Line Interface (CLI)
+
+List available test client IDs:
+```bash
+poetry run credit-risk-agent --list-clients
+```
+
+View financial info for a specific client:
+```bash
+poetry run credit-risk-agent --get-client-info -c 100
+```
+
+Run single prompt assessment:
+```bash
+poetry run credit-risk-agent --prompt "Evaluate credit risk for client 105" --verbose
+```
+
+Interactive terminal chat mode:
+```bash
+poetry run credit-risk-agent --chat --verbose
+```
 
 ---
 
-### 4. Презентационный слой и Развертывание (App Layer — Streamlit & Docker)
-**Задача**: Создание удобного дашборда для демонстрации работы.
-*   **Интерфейс**: На `Streamlit` сделать два экрана/вкладки:
-    *   *Вкладка 1: Профиль клиента*. Выбор ID клиента (доступен выбор только из тестовой выборки `test_clients.json` во избежание демонстрации переобучения) $\rightarrow$ отображение его истории платежей в виде графиков + кнопка "Запустить скоринг" (вызывает PyTorch-модель).
-    *   *Вкладка 2: Чат с риск-ассистентом*. Интерфейс чата, подключенный к AI-агенту (с автоматической валидацией запросов на соответствие тестовой выборке).
-*   **Сборка**: `Dockerfile` на базе образа `python:3.12-slim`, который копирует проект, устанавливает зависимости (`pyproject.toml` через Poetry), инициализирует базу данных, запускает Streamlit-сервер на порту `8501`.
+## Testing & Quality
+
+Run test suite:
+```bash
+poetry run pytest
+```
+
+Code linting and formatting:
+```bash
+poetry run ruff check .
+```
+
+Type checking:
+```bash
+poetry run mypy credit_risk_agent
+```
+
+Pre-commit validation:
+```bash
+poetry run pre-commit run --all-files
+```
 
 ---
 
-## 🎯 Что это дает при демонстрации на интервью:
-Ты сможешь показать рабочий UI, в котором пишешь текстовый запрос: *"Посчитай риск дефолта для клиента №15 и объясни, почему модель выдала такой результат на основе его последних платежей"*. Агент сам напишет SQL, выгрузит данные в нейросеть, проанализирует полученный скоринг и выдаст логичное текстовое объяснение.
+## Repository Structure
+
+```
+credit-risk-agent/
+├── artifacts/              # Model weights (model.pt) and scaler (scaler.json)
+├── credit_risk_agent/      # Main package source code
+│   ├── agent/              # ReAct Agent logic, GigaChat API integration, tools, events
+│   ├── app/                # Streamlit UI pages and CLI entrypoint
+│   ├── data/               # Preprocessing pipelines and StandardScaler
+│   ├── model/              # PyTorch model definitions and PyTorch Dataset
+│   └── config.py           # Paths and hyperparameter configuration
+├── data/                   # SQLite database files (database.db, train/test split DBs)
+├── docs/                   # Documentation and ER diagrams
+├── notebooks/              # Data analysis and model exploration notebooks
+├── scripts/                # Data download and training scripts
+├── tests/                  # Pytest unit and integration test suite
+├── pyproject.toml          # Poetry dependencies and tool configurations
+└── README.md               # Project documentation
+```
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
