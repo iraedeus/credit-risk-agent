@@ -54,6 +54,8 @@ class CreditRiskAgent:
         self.system_prompt = system_prompt
         self.max_iterations = max_iterations
 
+        self.history: list[Messages] = [Messages(role=MessagesRole.SYSTEM, content=system_prompt)]
+
     def run(self, user_prompt: str, verbose: bool = False) -> str:
         """
         Execute the ReAct agent loop for a given user prompt.
@@ -68,16 +70,13 @@ class CreditRiskAgent:
         str
             The agent's final text answer or termination message if max iterations are reached.
         """
-        messages = [
-            Messages(role=MessagesRole.SYSTEM, content=self.system_prompt),
-            Messages(role=MessagesRole.USER, content=user_prompt),
-        ]
+
+        self.history.append(Messages(role=MessagesRole.USER, content=user_prompt))
 
         for i in range(self.max_iterations):
-            response = self.client.chat(Chat(messages=messages, functions=self.functions))
-
+            response = self.client.chat(Chat(messages=self.history, functions=self.functions))
             message = response.choices[0].message
-            messages.append(message)
+            self.history.append(message)
 
             if message.function_call:
                 if message.content and verbose:
@@ -96,7 +95,7 @@ class CreditRiskAgent:
                     except json.JSONDecodeError:
                         tool_res = "Ошибка: невалидный формат JSON в аргументах инструмента."
                         content_json = json.dumps({"result": tool_res}, ensure_ascii=False)
-                        messages.append(Messages(role=MessagesRole.FUNCTION, name=func_name, content=content_json))
+                        self.history.append(Messages(role=MessagesRole.FUNCTION, name=func_name, content=content_json))
                         continue
 
                 if func_name in self.tools:
@@ -108,9 +107,12 @@ class CreditRiskAgent:
                     print(f"[Наблюдение {i + 1}]: {tool_res}\n\n" + "=" * 50 + "\n")
 
                 content_json = json.dumps({"result": tool_res}, ensure_ascii=False)
-                messages.append(Messages(role=MessagesRole.FUNCTION, name=func_name, content=content_json))
+                self.history.append(Messages(role=MessagesRole.FUNCTION, name=func_name, content=content_json))
 
             else:
                 return message.content or ""
 
         return "Достигнуто максимальное количество итераций без итогового вердикта."
+
+    def clear_history(self) -> None:
+        self.history = [Messages(role=MessagesRole.SYSTEM, content=self.system_prompt)]

@@ -30,7 +30,27 @@ def prompt_agent(prompt: str, verbose: bool = False) -> None:
 
 
 def chat_agent(verbose: bool = False) -> None:
-    pass
+    load_dotenv()
+    credentials = os.getenv("GIGACHAT_CREDENTIALS")
+
+    if not credentials or credentials == "your_gigachat_authorization_data":
+        print("Добавьте пожалуйста ваш API-ключ для GigaChat в файл .env")
+        return
+
+    with GigaChat(credentials=credentials, verify_ssl_certs=False) as client:
+        agent = CreditRiskAgent(client, max_iterations=25)
+        while True:
+            user_input = input("Вы > ")
+            if user_input == "clear":
+                agent.clear_history()
+                print("История очищена.")
+                continue
+
+            if user_input == "exit":
+                break
+
+            response = agent.run(user_input, verbose=verbose)
+            print(f"Agent > {response}")
 
 
 def list_test_clients(limit: int = 10) -> None:
