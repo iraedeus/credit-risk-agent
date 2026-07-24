@@ -1,0 +1,110 @@
+from typing import Any
+
+import torch
+
+from credit_risk_agent.config import MODEL_SAVE_PATH, SCALER_COLS, SCALER_PATH, TEST_DATABASE_PATH
+from credit_risk_agent.data.standard_scaler import StandardScaler
+from credit_risk_agent.model.dataset import prepare_dataset
+from credit_risk_agent.model.model import CreditDefaultPredictor
+from scripts.train import load_and_preprocess_from_db
+
+
+def _get_risk_level(pd_val: float) -> str:
+    if pd_val < 0.35:
+        return "Низкий риск"
+    elif pd_val < 0.55:
+        return "Умеренный/Средний риск"
+    else:
+        return "Высокий риск"
+
+
+def _predict_pd(model: CreditDefaultPredictor, client_df: Any, scaler: StandardScaler) -> float:
+    """Helper function to scale client data and evaluate model probability of default."""
+    scaled_df = scaler.transform(client_df.copy(), SCALER_COLS)
+    dataset = prepare_dataset(scaled_df)
+    with torch.no_grad():
+        score = torch.sigmoid(model(dataset[0][0].unsqueeze(0), dataset[0][1].unsqueeze(0))).item()
+    return float(score)
+
+
+def simulate_custom_scenario(client_id: int, params: dict[str, Any]) -> str:
+    """
+    Simulate custom 'What-If' scenarios for a client by modifying specific features
+    and predicting the new credit default probability (PD).
+
+    Parameters
+    ----------
+    client_id : int
+        The unique identifier of the client to analyze.
+    params : dict[str, Any]
+        Dictionary mapping feature names to their new simulated values.
+        Example: {"limit_bal": 100000, "pay_0": 0}
+
+    Returns
+    -------
+    str
+        Formatted string containing baseline PD, simulated PD, delta change,
+        and interpretation of the risk impact.
+    """
+    raw_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
+    client_raw_df = raw_df[raw_df["client_id"] == client_id]
+    if len(client_raw_df) == 0:
+        return f"Клиент с client_id = {client_id} не был найден в базе данных."
+
+    scaler = StandardScaler.load(SCALER_PATH)
+
+    model = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
+    state_dict = torch.load(MODEL_SAVE_PATH)
+    model.load_state_dict(state_dict)
+    model.eval()
+
+    old_pd = _predict_pd(model, client_raw_df, scaler)
+
+    simulated_raw_df = client_raw_df.copy()
+    applied_changes = []
+    ignored_keys = []
+
+    for k, v in params.items():
+        if k in simulated_raw_df.columns:
+            simulated_raw_df[k] = v
+            applied_changes.append(f"  - {k}: {v}")
+        else:
+            ignored_keys.append(k)
+
+    if not applied_changes:
+        return (
+            f"Ошибка: Ни один из переданных параметров {list(params.keys())} "
+            f"не содержится в признаках клиентов. Проверьте правильность имён полей."
+        )
+
+    new_pd = _predict_pd(model, simulated_raw_df, scaler)
+    delta_pd = new_pd - old_pd
+    delta_pct = delta_pd * 100
+
+    old_risk = _get_risk_level(old_pd)
+    new_risk = _get_risk_level(new_pd)
+
+    changes_str = "\n".join(applied_changes)
+    warning_str = f"\n⚠️ Игнорируемые неизвестные ключи: {ignored_keys}" if ignored_keys else ""
+
+    sign = "+" if delta_pd > 0 else ""
+    if delta_pd < 0:
+        dynamics_str = "Снижение риска 🟢"
+    elif delta_pd > 0:
+        dynamics_str = "Увеличение риска 🔴"
+    else:
+        dynamics_str = "Без изменений ⚪"
+
+    return (
+        f"📊 Результаты What-If симуляции для клиента id={client_id}:\n\n"
+        f"1. Базовый вариант (Baseline):\n"
+        f"   - Вероятность дефолта (PD): {old_pd * 100:.2f}%\n"
+        f"   - Категория риска: {old_risk}\n\n"
+        f"2. Симулируемый сценарий:\n"
+        f"   Примененные изменения:\n{changes_str}{warning_str}\n"
+        f"   - Симулированный PD: {new_pd * 100:.2f}%\n"
+        f"   - Категория риска: {new_risk}\n\n"
+        f"3. Итог симуляции:\n"
+        f"   - Изменение PD: {sign}{delta_pct:.2f}% п.п.\n"
+        f"   - Динамика риска: {dynamics_str}"
+    )
