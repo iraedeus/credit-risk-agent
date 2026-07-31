@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    container_name: credit_risk_app
+    ports:
+      - "8502:8501"
+    env_file:
+      - .env
+    volumes:
+      - "./data:/app/data"
+      - "./artifacts:/app/artifacts"
