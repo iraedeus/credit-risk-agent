@@ -22,6 +22,7 @@ A hybrid credit risk assessment and automated underwriting system combining a Py
 - **LLM & Agent**: GigaChat API SDK, ReAct Pattern
 - **Web UI**: Streamlit
 - **Database**: SQLite3
+- **DevOps & Containerization**: Docker, Docker Compose
 - **Quality & Testing**: Pytest, Ruff, Mypy, Pre-commit
 
 ---
@@ -107,6 +108,20 @@ Interactive terminal chat mode:
 poetry run credit-risk-agent --chat --verbose
 ```
 
+### 3. Docker Containerization
+
+Run the application using Docker Compose:
+```bash
+docker compose up --build
+```
+Open `http://localhost:8502` to access the Streamlit UI.
+
+Or run directly via Docker CLI:
+```bash
+docker build -t credit-risk-agent .
+docker run -d -p 8501:8501 --env-file .env -v $(pwd)/data:/app/data -v $(pwd)/artifacts:/app/artifacts credit-risk-agent
+```
+
 ---
 
 ## Testing & Quality
@@ -149,6 +164,8 @@ credit-risk-agent/
 ├── notebooks/              # Data analysis and model exploration notebooks
 ├── scripts/                # Data download and training scripts
 ├── tests/                  # Pytest unit and integration test suite
+├── Dockerfile              # Docker container definition
+├── docker-compose.yml      # Docker Compose configuration
 ├── pyproject.toml          # Poetry dependencies and tool configurations
 └── README.md               # Project documentation
 ```
