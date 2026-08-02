@@ -22,6 +22,7 @@ A hybrid credit risk assessment and automated underwriting system combining a Py
 - **LLM & Agent**: GigaChat API SDK, ReAct Pattern
 - **Web UI**: Streamlit
 - **Database**: SQLite3
+- **Experiment Tracking**: MLflow
 - **DevOps & Containerization**: Docker, Docker Compose
 - **Quality & Testing**: Pytest, Ruff, Mypy, Pre-commit
 
@@ -63,16 +64,22 @@ Download the UCI Credit Card dataset from Kaggle and populate the SQLite databas
 poetry run download-dataset
 ```
 
-### 2. Train Model
-Train the `CreditDefaultPredictor` PyTorch model (artifacts saved to `artifacts/model.pt` and `artifacts/scaler.json`):
+### 2. Train Model & Track Experiments
+Train the `CreditDefaultPredictor` PyTorch model with customizable hyperparameters:
 ```bash
-poetry run train-model
+poetry run train-model --lr 0.001 --batch-size 32 --hidden 64
 ```
 
 Evaluate model performance on the test split:
 ```bash
 poetry run train-model --view-quality
 ```
+
+Launch the **MLflow Dashboard** to inspect experiment runs, metrics, and parameters:
+```bash
+poetry run mlflow ui
+```
+Open `http://localhost:5000` in your browser.
 
 ---
 

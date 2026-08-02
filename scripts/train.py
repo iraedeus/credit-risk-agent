@@ -12,6 +12,9 @@ from torch.utils.data import DataLoader
 
 from credit_risk_agent.config import (
     BATCH_SIZE,
+    DROPOUT_PROB,
+    EPOCHS,
+    HIDDEN_SIZE,
     ID_COL,
     LEARNING_RATE,
     MODEL_SAVE_PATH,
@@ -97,6 +100,11 @@ def save_split_db() -> None:
 def train_model(
     train_loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
     model_save_path: Path,
+    epochs: int = EPOCHS,
+    lr: float = LEARNING_RATE,
+    hidden_size: int = HIDDEN_SIZE,
+    num_layers: int = 1,
+    dropout_prob: float = DROPOUT_PROB,
 ) -> nn.Module:
     """
     Train the CreditDefaultPredictor neural network model and save trained weights.
@@ -107,6 +115,16 @@ def train_model(
         DataLoader yielding batches of sequence features, static features, and target labels.
     model_save_path : Path
         Destination filepath to save the trained model weights PyTorch checkpoint.
+    epochs : int, default=25
+        Number of training epochs.
+    lr : float, default=LEARNING_RATE
+        Learning rate for Adam optimizer.
+    hidden_size : int, default=64
+        Hidden state dimension of LSTM model.
+    num_layers : int, default=1
+        Number of LSTM layers.
+    dropout_prob : float, default=0.28
+        Dropout probability.
 
     Returns
     -------
@@ -114,15 +132,17 @@ def train_model(
         Trained CreditDefaultPredictor model instance.
     """
 
-    model = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
+    model = CreditDefaultPredictor(
+        hidden_size=hidden_size, num_layers=num_layers, static_size=14, dropout_prob=dropout_prob
+    )
 
     pos_weight = torch.tensor([78.0 / 22.0])
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
-    optimizer = Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = Adam(model.parameters(), lr=lr)
 
     print("Starting training...")
-    for epoch in range(25):
+    for epoch in range(epochs):
         model.train()
         epoch_losses = []
         for seq_features, static_features, labels in train_loader:
@@ -135,7 +155,7 @@ def train_model(
             optimizer.step()
 
         avg_loss = sum(epoch_losses) / len(epoch_losses)
-        print(f"Epoch {epoch + 1:02d}/25 - Average Loss: {avg_loss:.4f}")
+        print(f"Epoch {epoch + 1:02d}/{epochs} - Average Loss: {avg_loss:.4f}")
 
     torch.save(model.state_dict(), model_save_path)
 
@@ -195,9 +215,17 @@ def main() -> None:
     parser.add_argument(
         "--view-quality", action="store_true", help="Выдать отчёт качества обученной модели на тестовых данных"
     )
+    parser.add_argument("--epochs", type=int, default=EPOCHS, help="Количество эпох обучения")
+    parser.add_argument("--lr", type=float, default=LEARNING_RATE, help="Установить параметр learning rate")
+    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Установить параметр batch size")
+    parser.add_argument("--hidden", type=int, default=HIDDEN_SIZE, help="Установить параметр hidden_layers")
     args = parser.parse_args()
 
     view_quality = args.view_quality
+    batch_size = args.batch_size
+    hidden_size = args.hidden
+    epochs = args.epochs
+    lr = args.lr
 
     save_split_db()
 
@@ -208,9 +236,9 @@ def main() -> None:
         test_df = scaler.transform(test_df, SCALER_COLS)
 
         test_dataset = prepare_dataset(test_df, id_col=ID_COL, target_col=TARGET_COL)
-        test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+        test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
 
-        model = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
+        model = CreditDefaultPredictor(hidden_size=hidden_size, num_layers=1, static_size=14, dropout_prob=DROPOUT_PROB)
         model.load_state_dict(torch.load(MODEL_SAVE_PATH))
         check_model_quality(model, test_loader)
         return
@@ -226,9 +254,9 @@ def main() -> None:
     train_dataset = prepare_dataset(train_df, id_col=ID_COL, target_col=TARGET_COL)
     test_dataset = prepare_dataset(test_df, id_col=ID_COL, target_col=TARGET_COL)
 
-    train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-    model = train_model(train_loader, MODEL_SAVE_PATH)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
+    model = train_model(train_loader, MODEL_SAVE_PATH, epochs=epochs, lr=lr, hidden_size=hidden_size)
     check_model_quality(model, test_loader)
 
 

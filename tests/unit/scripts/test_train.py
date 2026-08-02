@@ -168,6 +168,10 @@ class TestMainCLI:
         # Arrange
         mock_args = MagicMock()
         mock_args.view_quality = False
+        mock_args.batch_size = 32
+        mock_args.epochs = 25
+        mock_args.hidden = 64
+        mock_args.lr = 0.001
         mock_parse_args.return_value = mock_args
 
         mock_df = MagicMock()
@@ -215,6 +219,10 @@ class TestMainCLI:
         # Arrange
         mock_args = MagicMock()
         mock_args.view_quality = True
+        mock_args.batch_size = 32
+        mock_args.epochs = 25
+        mock_args.hidden = 64
+        mock_args.lr = 0.001
         mock_parse_args.return_value = mock_args
 
         mock_test_df = MagicMock()
