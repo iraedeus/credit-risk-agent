@@ -2,6 +2,9 @@ import argparse
 import sqlite3
 from pathlib import Path
 
+import mlflow
+import mlflow.artifacts
+import mlflow.pytorch
 import pandas as pd
 import torch
 from sklearn.metrics import classification_report, roc_auc_score
@@ -27,6 +30,15 @@ from credit_risk_agent.config import (
 )
 from credit_risk_agent.data import StandardScaler, preprocess
 from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
+
+
+def load_scaler_from_mlflow(run_id: str) -> StandardScaler:
+    local_path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path="preprocessing/scaler.json")
+    return StandardScaler.load(Path(local_path))
+
+
+def load_model_from_mlflow(run_id: str) -> CreditDefaultPredictor:
+    return mlflow.pytorch.load_model(f"runs:/{run_id}/model")
 
 
 def load_and_preprocess_from_db(db_path: Path) -> pd.DataFrame:
@@ -156,6 +168,8 @@ def train_model(
 
         avg_loss = sum(epoch_losses) / len(epoch_losses)
         print(f"Epoch {epoch + 1:02d}/{epochs} - Average Loss: {avg_loss:.4f}")
+        if mlflow.active_run():
+            mlflow.log_metric("train_loss", avg_loss, step=epoch + 1)
 
     torch.save(model.state_dict(), model_save_path)
 
@@ -194,12 +208,23 @@ def check_model_quality(
             all_preds.extend(probs.view(-1).tolist())
             all_targets.extend(labels.view(-1).tolist())
 
-    roc_auc = roc_auc_score(all_targets, all_preds)
+    roc_auc = float(roc_auc_score(all_targets, all_preds))
     print(f"Test ROC AUC: {roc_auc:.4f}\n")
 
     binary_preds = [1 if p >= 0.55 else 0 for p in all_preds]
+    report = classification_report(all_targets, binary_preds, target_names=["Non-default", "Default"], output_dict=True)
     print("Classification Report:")
     print(classification_report(all_targets, binary_preds, target_names=["Non-default", "Default"]))
+
+    metrics = {
+        "test_roc_auc": roc_auc,
+        "default_precision": float(report["Default"]["precision"]),
+        "default_recall": float(report["Default"]["recall"]),
+        "default_f1": float(report["Default"]["f1-score"]),
+        "accuracy": float(report["accuracy"]),
+    }
+    if mlflow.active_run():
+        mlflow.log_metrics(metrics)
 
 
 def main() -> None:
@@ -215,11 +240,20 @@ def main() -> None:
     parser.add_argument(
         "--view-quality", action="store_true", help="Выдать отчёт качества обученной модели на тестовых данных"
     )
+    parser.add_argument("--run-id", type=str, help="ID запуска в MLflow для загрузки модели и скейлера")
+
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="Количество эпох обучения")
     parser.add_argument("--lr", type=float, default=LEARNING_RATE, help="Установить параметр learning rate")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Установить параметр batch size")
     parser.add_argument("--hidden", type=int, default=HIDDEN_SIZE, help="Установить параметр hidden_layers")
+    parser.add_argument("--run-name", type=str, default="baseline_run", help="Имя запуска в MLflow")
+
     args = parser.parse_args()
+
+    if args.view_quality and not args.run_id:
+        parser.error(
+            "Флаг --view-quality требует обязательного указания --run-id (например: --view-quality --run-id <RUN_ID>)"
+        )
 
     view_quality = args.view_quality
     batch_size = args.batch_size
@@ -232,14 +266,13 @@ def main() -> None:
     if view_quality:
         print("Загрузка сохраненной модели и оценка качества на тестовой выборке...")
         test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
-        scaler = StandardScaler.load(SCALER_PATH)
+        scaler = load_scaler_from_mlflow(args.run_id)
         test_df = scaler.transform(test_df, SCALER_COLS)
 
         test_dataset = prepare_dataset(test_df, id_col=ID_COL, target_col=TARGET_COL)
         test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
 
-        model = CreditDefaultPredictor(hidden_size=hidden_size, num_layers=1, static_size=14, dropout_prob=DROPOUT_PROB)
-        model.load_state_dict(torch.load(MODEL_SAVE_PATH))
+        model = load_model_from_mlflow(args.run_id)
         check_model_quality(model, test_loader)
         return
 
@@ -256,8 +289,28 @@ def main() -> None:
 
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
-    model = train_model(train_loader, MODEL_SAVE_PATH, epochs=epochs, lr=lr, hidden_size=hidden_size)
-    check_model_quality(model, test_loader)
+
+    mlflow.set_experiment("credit_default_predictor")
+
+    with mlflow.start_run(run_name=args.run_name):
+        mlflow.log_params(
+            {
+                "learning_rate": lr,
+                "batch_size": batch_size,
+                "hidden_size": hidden_size,
+                "epochs": epochs,
+                "dropout_prob": DROPOUT_PROB,
+                "optimizer": "Adam",
+            }
+        )
+
+        mlflow.log_artifact(str(SCALER_PATH), artifact_path="preprocessing")
+
+        model = train_model(train_loader, MODEL_SAVE_PATH, epochs=epochs, lr=lr, hidden_size=hidden_size)
+        check_model_quality(model, test_loader)
+
+        if isinstance(model, torch.nn.Module):
+            mlflow.pytorch.log_model(model, name="model", serialization_format="pickle")
 
 
 if __name__ == "__main__":

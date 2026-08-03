@@ -134,8 +134,12 @@ class TestCheckModelQuality:
         dummy_labels = torch.tensor([[1.0], [0.0]])
 
         mock_loader = [(dummy_seq, dummy_static, dummy_labels)]
-        mock_roc_auc.return_value = 0.95
-        mock_class_report.return_value = "Mock Classification Report"
+        dict_report = {
+            "Default": {"precision": 0.8, "recall": 0.7, "f1-score": 0.75},
+            "Non-default": {"precision": 0.9, "recall": 0.85, "f1-score": 0.87},
+            "accuracy": 0.85,
+        }
+        mock_class_report.side_effect = [dict_report, "Mock Classification Report"]
 
         # Act
         check_model_quality(mock_model, mock_loader)
@@ -143,7 +147,7 @@ class TestCheckModelQuality:
         # Assert
         mock_model.eval.assert_called_once()
         mock_roc_auc.assert_called_once()
-        mock_class_report.assert_called_once()
+        assert mock_class_report.call_count == 2
 
 
 class TestMainCLI:
@@ -172,6 +176,7 @@ class TestMainCLI:
         mock_args.epochs = 25
         mock_args.hidden = 64
         mock_args.lr = 0.001
+        mock_args.run_name = "baseline_run"
         mock_parse_args.return_value = mock_args
 
         mock_df = MagicMock()
@@ -197,43 +202,45 @@ class TestMainCLI:
         mock_check_quality.assert_called_once()
 
     @patch("scripts.train.check_model_quality")
-    @patch("scripts.train.CreditDefaultPredictor")
+    @patch("scripts.train.load_model_from_mlflow")
     @patch("scripts.train.prepare_dataset")
-    @patch("scripts.train.StandardScaler.load")
+    @patch("scripts.train.load_scaler_from_mlflow")
     @patch("scripts.train.load_and_preprocess_from_db")
     @patch("scripts.train.save_split_db")
-    @patch("scripts.train.torch.load")
     @patch("argparse.ArgumentParser.parse_args")
     def test_main_view_quality_mode(
         self,
         mock_parse_args: MagicMock,
-        mock_torch_load: MagicMock,
         mock_save_split: MagicMock,
         mock_load_db: MagicMock,
-        mock_scaler_load: MagicMock,
+        mock_load_scaler: MagicMock,
         mock_prep_ds: MagicMock,
-        mock_predictor: MagicMock,
+        mock_load_model: MagicMock,
         mock_check_quality: MagicMock,
     ) -> None:
         """Verify --view-quality CLI execution skips training and evaluates saved model weights."""
         # Arrange
         mock_args = MagicMock()
         mock_args.view_quality = True
+        mock_args.run_id = "test_run_id_123"
         mock_args.batch_size = 32
         mock_args.epochs = 25
         mock_args.hidden = 64
         mock_args.lr = 0.001
+        mock_args.run_name = "baseline_run"
         mock_parse_args.return_value = mock_args
 
         mock_test_df = MagicMock()
         mock_load_db.return_value = mock_test_df
         mock_scaler = MagicMock()
         mock_scaler.transform.return_value = mock_test_df
-        mock_scaler_load.return_value = mock_scaler
+        mock_load_scaler.return_value = mock_scaler
 
         mock_dataset = MagicMock()
         mock_dataset.__len__.return_value = 5
         mock_prep_ds.return_value = mock_dataset
+
+        mock_load_model.return_value = MagicMock()
 
         # Act
         main()
@@ -241,5 +248,6 @@ class TestMainCLI:
         # Assert
         mock_save_split.assert_called_once()
         mock_load_db.assert_called_once()
-        mock_scaler_load.assert_called_once()
+        mock_load_scaler.assert_called_once_with("test_run_id_123")
+        mock_load_model.assert_called_once_with("test_run_id_123")
         mock_check_quality.assert_called_once()
