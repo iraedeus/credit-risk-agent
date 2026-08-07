@@ -109,11 +109,12 @@ class TestTrainModel:
         save_path = tmp_path / "model.pth"
 
         # Act
-        result_model = train_model(mock_loader, save_path)
+        result_model, result_loss = train_model(mock_loader, save_path)
 
         # Assert
         mock_torch_save.assert_called_once_with(mock_model.state_dict(), save_path)
         assert result_model == mock_model
+        assert result_loss == 0.5
 
 
 class TestCheckModelQuality:
@@ -151,6 +152,7 @@ class TestCheckModelQuality:
 
 
 class TestMainCLI:
+    @patch("scripts.train.save_champion_model")
     @patch("scripts.train.check_model_quality")
     @patch("scripts.train.train_model")
     @patch("scripts.train.prepare_dataset")
@@ -167,6 +169,7 @@ class TestMainCLI:
         mock_prep_ds: MagicMock,
         mock_train: MagicMock,
         mock_check_quality: MagicMock,
+        mock_save_champion: MagicMock,
     ) -> None:
         """Verify default CLI execution runs data loading, splitting, training, and evaluation."""
         # Arrange
@@ -190,7 +193,7 @@ class TestMainCLI:
         mock_dataset.__len__.return_value = 5
         mock_prep_ds.return_value = mock_dataset
 
-        mock_train.return_value = MagicMock()
+        mock_train.return_value = (MagicMock(), 0.5)
 
         # Act
         main()

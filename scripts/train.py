@@ -1,9 +1,9 @@
 import argparse
+import copy
 import sqlite3
 from pathlib import Path
 
 import mlflow
-import mlflow.artifacts
 import mlflow.pytorch
 import pandas as pd
 import torch
@@ -15,6 +15,8 @@ from torch.utils.data import DataLoader
 
 from credit_risk_agent.config import (
     BATCH_SIZE,
+    BEST_MODEL_ALIAS,
+    BEST_MODEL_NAME,
     DROPOUT_PROB,
     EPOCHS,
     HIDDEN_SIZE,
@@ -30,15 +32,31 @@ from credit_risk_agent.config import (
 )
 from credit_risk_agent.data import StandardScaler, preprocess
 from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
+from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 
 
-def load_scaler_from_mlflow(run_id: str) -> StandardScaler:
-    local_path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path="preprocessing/scaler.json")
-    return StandardScaler.load(Path(local_path))
+def configure_argparser() -> argparse.Namespace:
+    """
+    Parse command-line arguments for training and model evaluation CLI.
 
+    Returns
+    -------
+    argparse.Namespace
+        Parsed CLI arguments containing hyperparameters and evaluation flags.
+    """
+    parser = argparse.ArgumentParser(description="Скрипт для загрузки данных и обучения модели")
+    parser.add_argument(
+        "--view-quality", action="store_true", help="Выдать отчёт качества обученной модели на тестовых данных"
+    )
+    parser.add_argument("--run-id", type=str, help="ID запуска в MLflow для загрузки модели и скейлера")
 
-def load_model_from_mlflow(run_id: str) -> CreditDefaultPredictor:
-    return mlflow.pytorch.load_model(f"runs:/{run_id}/model")
+    parser.add_argument("--epochs", type=int, default=EPOCHS, help="Количество эпох обучения")
+    parser.add_argument("--lr", type=float, default=LEARNING_RATE, help="Установить параметр learning rate")
+    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Установить параметр batch size")
+    parser.add_argument("--hidden", type=int, default=HIDDEN_SIZE, help="Установить параметр hidden_layers")
+    parser.add_argument("--run-name", type=str, default="baseline_run", help="Имя запуска в MLflow")
+
+    return parser.parse_args()
 
 
 def load_and_preprocess_from_db(db_path: Path) -> pd.DataFrame:
@@ -117,7 +135,7 @@ def train_model(
     hidden_size: int = HIDDEN_SIZE,
     num_layers: int = 1,
     dropout_prob: float = DROPOUT_PROB,
-) -> nn.Module:
+) -> tuple[nn.Module, float]:
     """
     Train the CreditDefaultPredictor neural network model and save trained weights.
 
@@ -140,20 +158,22 @@ def train_model(
 
     Returns
     -------
-    nn.Module
-        Trained CreditDefaultPredictor model instance.
+    tuple[nn.Module, float]
+        Tuple containing the trained CreditDefaultPredictor model instance and the best loss value achieved.
     """
 
     model = CreditDefaultPredictor(
         hidden_size=hidden_size, num_layers=num_layers, static_size=14, dropout_prob=dropout_prob
     )
 
-    pos_weight = torch.tensor([78.0 / 22.0])
+    pos_weight = torch.tensor([78.0 / 22.0])  # Classes ratio
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
     optimizer = Adam(model.parameters(), lr=lr)
+    best_loss = float("inf")
+    best_weights = None
 
-    print("Starting training...")
+    print("Начинаем обучение...")
     for epoch in range(epochs):
         model.train()
         epoch_losses = []
@@ -167,13 +187,23 @@ def train_model(
             optimizer.step()
 
         avg_loss = sum(epoch_losses) / len(epoch_losses)
-        print(f"Epoch {epoch + 1:02d}/{epochs} - Average Loss: {avg_loss:.4f}")
+
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            best_weights = copy.deepcopy(model.state_dict())
+
+        print(f"Эпоха {epoch + 1:02d}/{epochs} - Средний лосс: {avg_loss:.4f}")
         if mlflow.active_run():
             mlflow.log_metric("train_loss", avg_loss, step=epoch + 1)
 
-    torch.save(model.state_dict(), model_save_path)
+    if mlflow.active_run():
+        mlflow.log_metric("best_train_loss", best_loss)
 
-    return model
+    if best_weights is not None:
+        torch.save(best_weights, model_save_path)
+
+    model.load_state_dict(best_weights)
+    return model, best_loss
 
 
 def check_model_quality(
@@ -209,11 +239,11 @@ def check_model_quality(
             all_targets.extend(labels.view(-1).tolist())
 
     roc_auc = float(roc_auc_score(all_targets, all_preds))
-    print(f"Test ROC AUC: {roc_auc:.4f}\n")
+    print(f"Тестовый ROC AUC: {roc_auc:.4f}\n")
 
     binary_preds = [1 if p >= 0.55 else 0 for p in all_preds]
     report = classification_report(all_targets, binary_preds, target_names=["Non-default", "Default"], output_dict=True)
-    print("Classification Report:")
+    print("Отчет классификации:")
     print(classification_report(all_targets, binary_preds, target_names=["Non-default", "Default"]))
 
     metrics = {
@@ -227,6 +257,39 @@ def check_model_quality(
         mlflow.log_metrics(metrics)
 
 
+def save_champion_model(loss: float) -> None:
+    """
+    Compare current model loss against the champion in MLflow Model Registry
+    and update champion alias if record is broken.
+
+    Parameters
+    ----------
+    loss : float
+        Best training loss achieved by the current model.
+
+    Returns
+    -------
+    None
+    """
+    client = mlflow.MlflowClient()
+    current_run_id = mlflow.active_run().info.run_id
+
+    try:
+        champion = client.get_model_version_by_alias(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
+        champion_run = client.get_run(champion.run_id)
+        champion_loss = champion_run.data.metrics.get("best_train_loss", float("inf"))
+    except mlflow.exceptions.MlflowException:
+        champion_loss = float("inf")
+        print("Чемпион еще не назначен.")
+
+    if loss < champion_loss:
+        print(f"Новый рекорд! Лосс улучшился с {champion_loss:.4f} до {loss:.4f}")
+        mv = mlflow.register_model(f"runs:/{current_run_id}/model", BEST_MODEL_NAME)
+        client.set_registered_model_alias(BEST_MODEL_NAME, BEST_MODEL_ALIAS, mv.version)
+    else:
+        print(f"Модель не побила рекорд. Текущий лосс чемпиона: {champion_loss:.4f}, наш лосс: {loss:.4f}")
+
+
 def main() -> None:
     """
     Execute main pipeline for database splitting, model training, and evaluation.
@@ -236,41 +299,18 @@ def main() -> None:
     None
     """
 
-    parser = argparse.ArgumentParser(description="Скрипт для загрузки данных и обучения модели")
-    parser.add_argument(
-        "--view-quality", action="store_true", help="Выдать отчёт качества обученной модели на тестовых данных"
-    )
-    parser.add_argument("--run-id", type=str, help="ID запуска в MLflow для загрузки модели и скейлера")
-
-    parser.add_argument("--epochs", type=int, default=EPOCHS, help="Количество эпох обучения")
-    parser.add_argument("--lr", type=float, default=LEARNING_RATE, help="Установить параметр learning rate")
-    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Установить параметр batch size")
-    parser.add_argument("--hidden", type=int, default=HIDDEN_SIZE, help="Установить параметр hidden_layers")
-    parser.add_argument("--run-name", type=str, default="baseline_run", help="Имя запуска в MLflow")
-
-    args = parser.parse_args()
-
-    if args.view_quality and not args.run_id:
-        parser.error(
-            "Флаг --view-quality требует обязательного указания --run-id (например: --view-quality --run-id <RUN_ID>)"
-        )
-
-    view_quality = args.view_quality
-    batch_size = args.batch_size
-    hidden_size = args.hidden
-    epochs = args.epochs
-    lr = args.lr
+    args = configure_argparser()
 
     save_split_db()
 
-    if view_quality:
+    if args.view_quality:
         print("Загрузка сохраненной модели и оценка качества на тестовой выборке...")
         test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
         scaler = load_scaler_from_mlflow(args.run_id)
         test_df = scaler.transform(test_df, SCALER_COLS)
 
         test_dataset = prepare_dataset(test_df, id_col=ID_COL, target_col=TARGET_COL)
-        test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
+        test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, shuffle=False)
 
         model = load_model_from_mlflow(args.run_id)
         check_model_quality(model, test_loader)
@@ -287,18 +327,18 @@ def main() -> None:
     train_dataset = prepare_dataset(train_df, id_col=ID_COL, target_col=TARGET_COL)
     test_dataset = prepare_dataset(test_df, id_col=ID_COL, target_col=TARGET_COL)
 
-    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True)
+    test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, shuffle=False)
 
     mlflow.set_experiment("credit_default_predictor")
 
     with mlflow.start_run(run_name=args.run_name):
         mlflow.log_params(
             {
-                "learning_rate": lr,
-                "batch_size": batch_size,
-                "hidden_size": hidden_size,
-                "epochs": epochs,
+                "learning_rate": args.lr,
+                "batch_size": args.batch_size,
+                "hidden_size": args.hidden,
+                "epochs": args.epochs,
                 "dropout_prob": DROPOUT_PROB,
                 "optimizer": "Adam",
             }
@@ -306,11 +346,14 @@ def main() -> None:
 
         mlflow.log_artifact(str(SCALER_PATH), artifact_path="preprocessing")
 
-        model = train_model(train_loader, MODEL_SAVE_PATH, epochs=epochs, lr=lr, hidden_size=hidden_size)
+        model, loss = train_model(
+            train_loader, MODEL_SAVE_PATH, epochs=args.epochs, lr=args.lr, hidden_size=args.hidden
+        )
         check_model_quality(model, test_loader)
 
         if isinstance(model, torch.nn.Module):
             mlflow.pytorch.log_model(model, name="model", serialization_format="pickle")
+            save_champion_model(loss)
 
 
 if __name__ == "__main__":
