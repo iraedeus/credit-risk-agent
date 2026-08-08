@@ -1,3 +1,7 @@
+"""
+SQL query execution tool for querying client relational tables.
+"""
+
 import sqlite3
 
 from credit_risk_agent.config import TEST_DATABASE_PATH

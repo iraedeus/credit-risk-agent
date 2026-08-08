@@ -1,3 +1,7 @@
+"""
+Data cleaning, categorical feature mapping, and static one-hot encoding routines.
+"""
+
 import pandas as pd
 
 STATIC_FEATURES = [

@@ -1,15 +1,17 @@
+"""
+Streamlit dashboard page for client profile analysis and risk evaluation.
+"""
+
 import sqlite3
 
 import pandas as pd
 import streamlit as st
-import torch
 from numpy import ndarray
 
 from credit_risk_agent.config import ID_COL, SCALER_COLS, TEST_DATABASE_PATH
-from credit_risk_agent.model.dataset import prepare_dataset
+from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
-from credit_risk_agent.model.model import CreditDefaultPredictor
-from scripts.train import load_and_preprocess_from_db
+from credit_risk_agent.model.predictor import CreditRiskPredictor
 
 SEX_MAP = {1: "Мужской", 2: "Женский"}
 EDUCATION_MAP = {1: "Аспирантура/Магистратура", 2: "Университет", 3: "Старшая школа", 4: "Другое"}
@@ -18,6 +20,14 @@ MARRIAGE_MAP = {1: "Женат / Замужем", 2: "Холост / Не зам
 
 @st.cache_data(ttl="30m")
 def get_available_clients_id() -> ndarray:
+    """
+    Fetch array of unique client IDs present in the test database.
+
+    Returns
+    -------
+    ndarray
+        Array of integer client IDs.
+    """
     with sqlite3.connect(TEST_DATABASE_PATH) as conn:
         client_ids = pd.read_sql_query("SELECT client_id FROM clients", conn)
         return client_ids[ID_COL].values.astype(int)
@@ -25,6 +35,19 @@ def get_available_clients_id() -> ndarray:
 
 @st.cache_data(ttl="30m")
 def get_client_full_data(client_id: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Fetch demographic and 6-month payment history records for a specified client ID.
+
+    Parameters
+    ----------
+    client_id : int
+        Unique client identifier.
+
+    Returns
+    -------
+    tuple of (pd.DataFrame, pd.DataFrame)
+        Tuple containing client demographics DataFrame and payment history DataFrame.
+    """
     with sqlite3.connect(TEST_DATABASE_PATH) as conn:
         client_info = pd.read_sql_query("SELECT * FROM clients WHERE client_id = ?", conn, params=[client_id])
         history = pd.read_sql_query(
@@ -36,32 +59,34 @@ def get_client_full_data(client_id: int) -> tuple[pd.DataFrame, pd.DataFrame]:
         return client_info, history
 
 
-@st.cache_resource
-def load_ml_model() -> CreditDefaultPredictor:
-    model = load_model_from_mlflow()
-    model.eval()
-    return model
-
-
 @st.cache_data(ttl="30m")
 def load_processed_test_dataset() -> pd.DataFrame:
+    """
+    Load and normalize full test dataset using MLflow scaler.
+
+    Returns
+    -------
+    pd.DataFrame
+        Normalized test dataset DataFrame.
+    """
     test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
     scaler = load_scaler_from_mlflow()
     return scaler.transform(test_df, SCALER_COLS)
 
 
-@st.cache_data(ttl="30m")
-def run_model(client_id: int) -> float:
-    model = load_ml_model()
-    test_df = load_processed_test_dataset()
+@st.cache_resource
+def get_credit_risk_predictor() -> CreditRiskPredictor:
+    """
+    Load MLflow model and scaler once and cache CreditRiskPredictor instance.
 
-    client_test_df = test_df[test_df["client_id"] == client_id]
-
-    test_dataset = prepare_dataset(client_test_df)
-
-    with torch.no_grad():
-        score = torch.sigmoid(model(test_dataset[0][0].unsqueeze(0), test_dataset[0][1].unsqueeze(0))).item()
-        return float(score)
+    Returns
+    -------
+    CreditRiskPredictor
+        Cached predictor instance.
+    """
+    model = load_model_from_mlflow()
+    scaler = load_scaler_from_mlflow()
+    return CreditRiskPredictor(model, scaler)
 
 
 st.title("Профиль клиента", anchor=False)
@@ -108,7 +133,8 @@ with st.container(border=True):
         else:
             st.badge("Без просрочек", color="green", icon=":material/check_circle:")
 
-        score = run_model(selected_client_id)
+        predictor = get_credit_risk_predictor()
+        score = predictor.predict_pd(row)
         is_high_risk = score >= 0.5
 
         st.metric(

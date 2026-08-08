@@ -1,12 +1,16 @@
+"""
+PyTorch neural network architecture for credit default prediction.
+"""
+
 from typing import cast
 
 import torch
 from torch import nn
 
 
-class CreditDefaultPredictor(nn.Module):
+class CreditDefaultModel(nn.Module):
     """
-    GRU-based model for predicting credit default risk.
+    GRU-based PyTorch model for predicting credit default risk.
 
     Parameters
     ----------
@@ -14,6 +18,10 @@ class CreditDefaultPredictor(nn.Module):
         The number of features in the GRU hidden state.
     num_layers : int, default=1
         Number of recurrent layers in the GRU.
+    static_size : int, default=5
+        Number of static demographic features.
+    dropout_prob : float, default=0.3
+        Dropout probability.
     """
 
     def __init__(self, hidden_size: int = 64, num_layers: int = 1, static_size: int = 5, dropout_prob: float = 0.3):
@@ -34,15 +42,10 @@ class CreditDefaultPredictor(nn.Module):
         """
         Forward pass of the model.
 
-        Note: To optimize performance, this method does not perform runtime
-        shape validation. The caller is responsible for ensuring the input
-        tensor satisfies the expected dimensions.
-
         Parameters
         ----------
         x_seq : torch.Tensor
             Input tensor of shape (batch_size, seq_size, 3).
-
         x_static : torch.Tensor
             Input tensor of shape (batch_size, static_size).
 

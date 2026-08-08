@@ -1,14 +1,14 @@
 import pytest
 import torch
 
-from credit_risk_agent.model.model import CreditDefaultPredictor
+from credit_risk_agent.model.model import CreditDefaultModel
 
 
-class TestCreditDefaultPredictor:
+class TestCreditDefaultModel:
     def test_model_initialization(self) -> None:
         """Verify correct initialization of GRU, linear layers, and dropout parameters."""
         # Arrange & Act
-        model = CreditDefaultPredictor(hidden_size=32, num_layers=2, static_size=5, dropout_prob=0.3)
+        model = CreditDefaultModel(hidden_size=32, num_layers=2, static_size=5, dropout_prob=0.3)
 
         # Assert
         assert model.gru.hidden_size == 32
@@ -29,7 +29,7 @@ class TestCreditDefaultPredictor:
         hidden_size = 64
         static_size = 7
 
-        model = CreditDefaultPredictor(hidden_size=hidden_size, static_size=static_size)
+        model = CreditDefaultModel(hidden_size=hidden_size, static_size=static_size)
         x_seq = torch.randn(batch_size, seq_len, input_size)
         x_static = torch.randn(batch_size, static_size)
 
@@ -49,7 +49,7 @@ class TestCreditDefaultPredictor:
     def test_model_forward_batch_sizes(self, batch_size: int, seq_len: int) -> None:
         """Verify forward pass correctly processes various batch sizes and sequence lengths."""
         # Arrange
-        model = CreditDefaultPredictor()
+        model = CreditDefaultModel()
         x_seq = torch.randn(batch_size, seq_len, 3)
         x_static = torch.randn(batch_size, 5)
 

@@ -1,14 +1,15 @@
+"""
+Model training CLI script, evaluation pipeline, and MLflow champion registration.
+"""
+
 import argparse
 import copy
-import sqlite3
 from pathlib import Path
 
 import mlflow
 import mlflow.pytorch
-import pandas as pd
 import torch
 from sklearn.metrics import classification_report, roc_auc_score
-from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
@@ -23,15 +24,15 @@ from credit_risk_agent.config import (
     ID_COL,
     LEARNING_RATE,
     MODEL_SAVE_PATH,
-    RAW_DATABASE_PATH,
     SCALER_COLS,
     SCALER_PATH,
     TARGET_COL,
     TEST_DATABASE_PATH,
     TRAIN_DATABASE_PATH,
 )
-from credit_risk_agent.data import StandardScaler, preprocess
-from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
+from credit_risk_agent.data import StandardScaler
+from credit_risk_agent.data.loader import load_and_preprocess_from_db
+from credit_risk_agent.model import CreditDefaultModel, prepare_dataset
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 
 
@@ -59,74 +60,6 @@ def configure_argparser() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_and_preprocess_from_db(db_path: Path) -> pd.DataFrame:
-    """
-    Load raw relational tables from a SQLite database, merge them, and apply preprocessing.
-
-    Parameters
-    ----------
-    db_path : Path
-        Path to the SQLite database file containing `clients`, `payment_history`,
-        and `ground_truth` tables.
-
-    Returns
-    -------
-    pd.DataFrame
-        Preprocessed DataFrame containing combined client features and payment history.
-    """
-
-    with sqlite3.connect(db_path) as conn:
-        client_df = pd.read_sql_query("SELECT * FROM clients", conn)
-        history_df = pd.read_sql_query("SELECT * FROM payment_history", conn)
-        gt_df = pd.read_sql_query("SELECT * FROM ground_truth", conn)
-
-        df = pd.merge(client_df, gt_df, on="client_id")
-        df = pd.merge(df, history_df, on="client_id")
-        df = preprocess(df)
-        return df
-
-
-def save_split_db() -> None:
-    """
-    Split raw database records into stratified training and testing SQLite databases.
-
-    Reads client records from `RAW_DATABASE_PATH`, performs stratified train-test splitting
-    on the ground truth target column, and saves the partitioned relational tables (`clients`,
-    `payment_history`, `ground_truth`) into `TRAIN_DATABASE_PATH` and `TEST_DATABASE_PATH`.
-
-    Returns
-    -------
-    None
-    """
-
-    with sqlite3.connect(RAW_DATABASE_PATH) as raw_conn:
-        raw_clients = pd.read_sql_query("SELECT * FROM clients", raw_conn)
-        raw_history = pd.read_sql_query("SELECT * FROM payment_history", raw_conn)
-        raw_gt = pd.read_sql_query("SELECT * FROM ground_truth", raw_conn)
-
-        train_ids, test_ids = train_test_split(
-            raw_gt[ID_COL], test_size=0.2, stratify=raw_gt[TARGET_COL], random_state=42
-        )
-
-        train_clients = raw_clients[raw_clients["client_id"].isin(train_ids)]
-        train_history = raw_history[raw_history["client_id"].isin(train_ids)]
-        train_gt = raw_gt[raw_gt["client_id"].isin(train_ids)]
-
-        test_clients = raw_clients[raw_clients["client_id"].isin(test_ids)]
-        test_history = raw_history[raw_history["client_id"].isin(test_ids)]
-        test_gt = raw_gt[raw_gt["client_id"].isin(test_ids)]
-
-    with sqlite3.connect(TRAIN_DATABASE_PATH) as train_conn:
-        train_clients.to_sql("clients", train_conn, if_exists="replace", index=False)
-        train_history.to_sql("payment_history", train_conn, if_exists="replace", index=False)
-        train_gt.to_sql("ground_truth", train_conn, if_exists="replace", index=False)
-
-    with sqlite3.connect(TEST_DATABASE_PATH) as test_conn:
-        test_clients.to_sql("clients", test_conn, if_exists="replace", index=False)
-        test_history.to_sql("payment_history", test_conn, if_exists="replace", index=False)
-        test_gt.to_sql("ground_truth", test_conn, if_exists="replace", index=False)
-
-
 def train_model(
     train_loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
     model_save_path: Path,
@@ -137,7 +70,7 @@ def train_model(
     dropout_prob: float = DROPOUT_PROB,
 ) -> tuple[nn.Module, float]:
     """
-    Train the CreditDefaultPredictor neural network model and save trained weights.
+    Train the CreditDefaultModel neural network model and save trained weights.
 
     Parameters
     ----------
@@ -159,10 +92,10 @@ def train_model(
     Returns
     -------
     tuple[nn.Module, float]
-        Tuple containing the trained CreditDefaultPredictor model instance and the best loss value achieved.
+        Tuple containing the trained CreditDefaultModel instance and the best loss value achieved.
     """
 
-    model = CreditDefaultPredictor(
+    model = CreditDefaultModel(
         hidden_size=hidden_size, num_layers=num_layers, static_size=14, dropout_prob=dropout_prob
     )
 
@@ -302,6 +235,9 @@ def main() -> None:
     args = configure_argparser()
 
     if args.view_quality:
+        if not TEST_DATABASE_PATH.exists():
+            raise FileNotFoundError("Тестовая БД не существует. Пожалуйста запустите скрипт подготовки данных.")
+
         print("Загрузка сохраненной модели и оценка качества на тестовой выборке...")
         test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
         scaler = load_scaler_from_mlflow(args.run_id)
@@ -314,13 +250,15 @@ def main() -> None:
         check_model_quality(model, test_loader)
         return
 
-    save_split_db()
+    if not TRAIN_DATABASE_PATH.exists() or not TEST_DATABASE_PATH.exists():
+        raise FileNotFoundError(
+            "Тренировочная или тестовая БД не существует. Пожалуйста запустите скрипт подготовки данных."
+        )
 
     train_df = load_and_preprocess_from_db(TRAIN_DATABASE_PATH)
     test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
 
-    scaler = StandardScaler().fit(train_df, SCALER_COLS)
-    scaler.save(SCALER_PATH)
+    scaler = StandardScaler.load(SCALER_PATH)
     train_df = scaler.transform(train_df, SCALER_COLS)
     test_df = scaler.transform(test_df, SCALER_COLS)
 

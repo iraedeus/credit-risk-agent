@@ -1,3 +1,10 @@
+"""
+Configuration settings and constants for Credit Risk Intelligence System.
+
+Defines filesystem paths, database column mappings, hyperparameter defaults,
+and MLflow Model Registry alias constants.
+"""
+
 from pathlib import Path
 
 __ROOT__ = Path(__file__).parent.parent
