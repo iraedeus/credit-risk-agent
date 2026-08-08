@@ -62,7 +62,40 @@ class TestDataSchemas:
                 delay_months_count=7,
             )
 
-    def test_client_full_info_mismatched_client_id(self) -> None:
+    def test_client_full_info_valid(self) -> None:
+        profile = ClientProfile(
+            client_id=10,
+            limit_bal=50000.0,
+            age=30,
+            sex=Sex.MALE,
+            education=Education.UNIVERSITY,
+            marriage=Marriage.SINGLE,
+        )
+        history = [
+            ClientPaymentHistory(
+                client_id=10,
+                month=1,
+                pay_status=0,
+                bill_amt=1000.0,
+                pay_amt=1000.0,
+            )
+        ]
+        metrics = ClientFinancialMetrics(
+            client_id=10,
+            limit_bal=50000.0,
+            avg_bill=1000.0,
+            avg_utilization=2.0,
+            max_utilization=2.0,
+            avg_pay=1000.0,
+            repayment_rate=100.0,
+            max_delay_status=0,
+            delay_months_count=0,
+        )
+        full_info = ClientFullInfo(profile=profile, history=history, metrics=metrics)
+        assert full_info.profile.client_id == 10
+        assert full_info.metrics.avg_utilization == 2.0
+
+    def test_client_full_info_mismatched_history_client_id(self) -> None:
         profile = ClientProfile(
             client_id=10,
             limit_bal=50000.0,
@@ -80,5 +113,48 @@ class TestDataSchemas:
                 pay_amt=1000.0,
             )
         ]
+        metrics = ClientFinancialMetrics(
+            client_id=10,
+            limit_bal=50000.0,
+            avg_bill=1000.0,
+            avg_utilization=2.0,
+            max_utilization=2.0,
+            avg_pay=1000.0,
+            repayment_rate=100.0,
+            max_delay_status=0,
+            delay_months_count=0,
+        )
         with pytest.raises(ValidationError, match="Mismatched history client_id"):
-            ClientFullInfo(profile=profile, history=history)
+            ClientFullInfo(profile=profile, history=history, metrics=metrics)
+
+    def test_client_full_info_mismatched_metrics_client_id(self) -> None:
+        profile = ClientProfile(
+            client_id=10,
+            limit_bal=50000.0,
+            age=30,
+            sex=Sex.MALE,
+            education=Education.UNIVERSITY,
+            marriage=Marriage.SINGLE,
+        )
+        history = [
+            ClientPaymentHistory(
+                client_id=10,
+                month=1,
+                pay_status=0,
+                bill_amt=1000.0,
+                pay_amt=1000.0,
+            )
+        ]
+        metrics = ClientFinancialMetrics(
+            client_id=77,
+            limit_bal=50000.0,
+            avg_bill=1000.0,
+            avg_utilization=2.0,
+            max_utilization=2.0,
+            avg_pay=1000.0,
+            repayment_rate=100.0,
+            max_delay_status=0,
+            delay_months_count=0,
+        )
+        with pytest.raises(ValidationError, match="Mismatched metrics client_id"):
+            ClientFullInfo(profile=profile, history=history, metrics=metrics)

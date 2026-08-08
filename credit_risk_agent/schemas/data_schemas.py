@@ -42,41 +42,6 @@ class ClientPaymentHistory(BaseModel):
     pay_amt: float = Field(..., description="Previous payment amount for the month")
 
 
-class ClientFullInfo(BaseModel):
-    """
-    Aggregated full client record containing demographic profile and 6-month payment history.
-    """
-
-    model_config = ConfigDict(from_attributes=True)
-
-    profile: ClientProfile = Field(..., description="Client demographic profile")
-    history: list[ClientPaymentHistory] = Field(..., description="List of 6 monthly payment history records")
-
-    @model_validator(mode="after")
-    def validate_client_ids_match(self) -> "ClientFullInfo":
-        """
-        Validate that all client_ids in history match profile client_id.
-
-        Returns
-        -------
-        ClientFullInfo
-            Validated ClientFullInfo instance.
-
-        Raises
-        ------
-        ValueError
-            If any record in history has a mismatched client_id.
-        """
-        for record in self.history:
-            if record.client_id != self.profile.client_id:
-                raise ValueError(
-                    f"Mismatched history client_id ({record.client_id}) "
-                    f"and profile client_id ({self.profile.client_id})"
-                )
-
-        return self
-
-
 class ClientFinancialMetrics(BaseModel):
     """
     Aggregated financial metrics and delinquency statistics for a credit client.
@@ -101,3 +66,45 @@ class ClientFinancialMetrics(BaseModel):
         le=6,
         description="Count of months with payment delay over 6-month historical period",
     )
+
+
+class ClientFullInfo(BaseModel):
+    """
+    Aggregated full client record containing demographic profile and 6-month payment history.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    profile: ClientProfile = Field(..., description="Client demographic profile")
+    history: list[ClientPaymentHistory] = Field(..., description="List of 6 monthly payment history records")
+    metrics: ClientFinancialMetrics = Field(..., description="Financial metrics of this client")
+
+    @model_validator(mode="after")
+    def validate_client_ids_match(self) -> "ClientFullInfo":
+        """
+        Validate that all client_ids in history match profile client_id.
+
+        Returns
+        -------
+        ClientFullInfo
+            Validated ClientFullInfo instance.
+
+        Raises
+        ------
+        ValueError
+            If any record in history has a mismatched client_id.
+        """
+        for record in self.history:
+            if record.client_id != self.profile.client_id:
+                raise ValueError(
+                    f"Mismatched history client_id ({record.client_id}) "
+                    f"and profile client_id ({self.profile.client_id})"
+                )
+
+        if self.metrics.client_id != self.profile.client_id:
+            raise ValueError(
+                f"Mismatched metrics client_id ({self.metrics.client_id}) "
+                f"and profile client_id ({self.profile.client_id})"
+            )
+
+        return self
