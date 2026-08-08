@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 from torch.utils.data import DataLoader
 
+import scripts.download_dataset as download_module
 import scripts.train as train_module
 from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
 from credit_risk_agent.data import StandardScaler
@@ -27,7 +28,11 @@ class TestMLflowPipeline:
         scaler_path = artifacts_path / "scaler.json"
         model_path = artifacts_path / "model.pt"
 
-        monkeypatch.setattr(train_module, "RAW_DATABASE_PATH", db_path)
+        monkeypatch.setattr(download_module, "RAW_DATABASE_PATH", db_path)
+        monkeypatch.setattr(download_module, "TRAIN_DATABASE_PATH", train_db_path)
+        monkeypatch.setattr(download_module, "TEST_DATABASE_PATH", test_db_path)
+        monkeypatch.setattr(download_module, "SCALER_PATH", scaler_path)
+
         monkeypatch.setattr(train_module, "TRAIN_DATABASE_PATH", train_db_path)
         monkeypatch.setattr(train_module, "TEST_DATABASE_PATH", test_db_path)
         monkeypatch.setattr(train_module, "MODEL_SAVE_PATH", model_path)
@@ -82,7 +87,7 @@ class TestMLflowPipeline:
             load_model_from_mlflow(run_id=None)
 
         # Prepare datasets for training passes
-        train_module.save_split_db()
+        download_module.create_train_test_db()
         train_df = train_module.load_and_preprocess_from_db(train_module.TRAIN_DATABASE_PATH)
         test_df = train_module.load_and_preprocess_from_db(train_module.TEST_DATABASE_PATH)
 

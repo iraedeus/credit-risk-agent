@@ -4,15 +4,12 @@ Model training CLI script, evaluation pipeline, and MLflow champion registration
 
 import argparse
 import copy
-import sqlite3
 from pathlib import Path
 
 import mlflow
 import mlflow.pytorch
-import pandas as pd
 import torch
 from sklearn.metrics import classification_report, roc_auc_score
-from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
@@ -27,7 +24,6 @@ from credit_risk_agent.config import (
     ID_COL,
     LEARNING_RATE,
     MODEL_SAVE_PATH,
-    RAW_DATABASE_PATH,
     SCALER_COLS,
     SCALER_PATH,
     TARGET_COL,
@@ -62,47 +58,6 @@ def configure_argparser() -> argparse.Namespace:
     parser.add_argument("--run-name", type=str, default="baseline_run", help="Имя запуска в MLflow")
 
     return parser.parse_args()
-
-
-def save_split_db() -> None:
-    """
-    Split raw database records into stratified training and testing SQLite databases.
-
-    Reads client records from `RAW_DATABASE_PATH`, performs stratified train-test splitting
-    on the ground truth target column, and saves the partitioned relational tables (`clients`,
-    `payment_history`, `ground_truth`) into `TRAIN_DATABASE_PATH` and `TEST_DATABASE_PATH`.
-
-    Returns
-    -------
-    None
-    """
-
-    with sqlite3.connect(RAW_DATABASE_PATH) as raw_conn:
-        raw_clients = pd.read_sql_query("SELECT * FROM clients", raw_conn)
-        raw_history = pd.read_sql_query("SELECT * FROM payment_history", raw_conn)
-        raw_gt = pd.read_sql_query("SELECT * FROM ground_truth", raw_conn)
-
-        train_ids, test_ids = train_test_split(
-            raw_gt[ID_COL], test_size=0.2, stratify=raw_gt[TARGET_COL], random_state=42
-        )
-
-        train_clients = raw_clients[raw_clients["client_id"].isin(train_ids)]
-        train_history = raw_history[raw_history["client_id"].isin(train_ids)]
-        train_gt = raw_gt[raw_gt["client_id"].isin(train_ids)]
-
-        test_clients = raw_clients[raw_clients["client_id"].isin(test_ids)]
-        test_history = raw_history[raw_history["client_id"].isin(test_ids)]
-        test_gt = raw_gt[raw_gt["client_id"].isin(test_ids)]
-
-    with sqlite3.connect(TRAIN_DATABASE_PATH) as train_conn:
-        train_clients.to_sql("clients", train_conn, if_exists="replace", index=False)
-        train_history.to_sql("payment_history", train_conn, if_exists="replace", index=False)
-        train_gt.to_sql("ground_truth", train_conn, if_exists="replace", index=False)
-
-    with sqlite3.connect(TEST_DATABASE_PATH) as test_conn:
-        test_clients.to_sql("clients", test_conn, if_exists="replace", index=False)
-        test_history.to_sql("payment_history", test_conn, if_exists="replace", index=False)
-        test_gt.to_sql("ground_truth", test_conn, if_exists="replace", index=False)
 
 
 def train_model(
@@ -295,13 +250,15 @@ def main() -> None:
         check_model_quality(model, test_loader)
         return
 
-    save_split_db()
+    if not TRAIN_DATABASE_PATH.exists() or not TEST_DATABASE_PATH.exists():
+        raise FileNotFoundError(
+            "Тренировочная или тестовая БД не существует. Пожалуйста запустите скрипт подготовки данных."
+        )
 
     train_df = load_and_preprocess_from_db(TRAIN_DATABASE_PATH)
     test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
 
-    scaler = StandardScaler().fit(train_df, SCALER_COLS)
-    scaler.save(SCALER_PATH)
+    scaler = StandardScaler.load(SCALER_PATH)
     train_df = scaler.transform(train_df, SCALER_COLS)
     test_df = scaler.transform(test_df, SCALER_COLS)
 
