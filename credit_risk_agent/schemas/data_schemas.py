@@ -75,3 +75,29 @@ class ClientFullInfo(BaseModel):
                 )
 
         return self
+
+
+class ClientFinancialMetrics(BaseModel):
+    """
+    Aggregated financial metrics and delinquency statistics for a credit client.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    client_id: int = Field(..., gt=0, description="Unique client identifier")
+    limit_bal: float = Field(..., gt=0, description="Credit limit balance")
+    avg_bill: float = Field(..., description="Average monthly bill statement amount")
+    avg_utilization: float = Field(..., description="Average credit limit utilization percentage")
+    max_utilization: float = Field(..., description="Maximum credit limit utilization percentage")
+    avg_pay: float = Field(..., ge=0, description="Average monthly payment amount")
+    repayment_rate: float = Field(..., ge=0, description="Repayment coverage rate percentage")
+    max_delay_status: int = Field(
+        ...,
+        description="Maximum payment delay status (-1: pay duly, 1..8: payment delay in months)",
+    )
+    delay_months_count: int = Field(
+        ...,
+        ge=0,
+        le=6,
+        description="Count of months with payment delay over 6-month historical period",
+    )
