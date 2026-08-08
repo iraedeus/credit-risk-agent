@@ -211,12 +211,10 @@ class TestMainCLI:
     @patch("scripts.train.prepare_dataset")
     @patch("scripts.train.load_scaler_from_mlflow")
     @patch("scripts.train.load_and_preprocess_from_db")
-    @patch("scripts.train.save_split_db")
     @patch("argparse.ArgumentParser.parse_args")
     def test_main_view_quality_mode(
         self,
         mock_parse_args: MagicMock,
-        mock_save_split: MagicMock,
         mock_load_db: MagicMock,
         mock_load_scaler: MagicMock,
         mock_prep_ds: MagicMock,
@@ -251,7 +249,6 @@ class TestMainCLI:
         main()
 
         # Assert
-        mock_save_split.assert_called_once()
         mock_load_db.assert_called_once()
         mock_load_scaler.assert_called_once_with("test_run_id_123")
         mock_load_model.assert_called_once_with("test_run_id_123")

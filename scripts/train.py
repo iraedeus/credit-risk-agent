@@ -277,7 +277,7 @@ def save_champion_model(loss: float) -> None:
     try:
         champion = client.get_model_version_by_alias(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
         champion_run = client.get_run(champion.run_id)
-        champion_loss = champion_run.data.metrics.get("best_train_loss", float("inf"))
+        champion_loss = champion_run.data.metrics.get("best_train_loss") or float("inf")
     except mlflow.exceptions.MlflowException:
         champion_loss = float("inf")
         print("Чемпион еще не назначен.")
@@ -301,8 +301,6 @@ def main() -> None:
 
     args = configure_argparser()
 
-    save_split_db()
-
     if args.view_quality:
         print("Загрузка сохраненной модели и оценка качества на тестовой выборке...")
         test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
@@ -315,6 +313,8 @@ def main() -> None:
         model = load_model_from_mlflow(args.run_id)
         check_model_quality(model, test_loader)
         return
+
+    save_split_db()
 
     train_df = load_and_preprocess_from_db(TRAIN_DATABASE_PATH)
     test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
