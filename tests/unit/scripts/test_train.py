@@ -152,6 +152,7 @@ class TestCheckModelQuality:
 
 
 class TestMainCLI:
+    @patch("scripts.train.mlflow")
     @patch("scripts.train.save_champion_model")
     @patch("scripts.train.check_model_quality")
     @patch("scripts.train.train_model")
@@ -170,6 +171,7 @@ class TestMainCLI:
         mock_train: MagicMock,
         mock_check_quality: MagicMock,
         mock_save_champion: MagicMock,
+        mock_mlflow: MagicMock,
     ) -> None:
         """Verify default CLI execution runs data loading, splitting, training, and evaluation."""
         # Arrange
