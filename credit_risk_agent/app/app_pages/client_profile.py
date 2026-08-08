@@ -7,7 +7,7 @@ from numpy import ndarray
 from credit_risk_agent.config import ID_COL, SCALER_COLS, TEST_DATABASE_PATH
 from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
-from credit_risk_agent.model.model import CreditRiskModel
+from credit_risk_agent.model.predictor import CreditRiskPredictor
 
 SEX_MAP = {1: "Мужской", 2: "Женский"}
 EDUCATION_MAP = {1: "Аспирантура/Магистратура", 2: "Университет", 3: "Старшая школа", 4: "Другое"}
@@ -42,10 +42,10 @@ def load_processed_test_dataset() -> pd.DataFrame:
 
 
 @st.cache_resource
-def get_credit_risk_model() -> CreditRiskModel:
+def get_credit_risk_predictor() -> CreditRiskPredictor:
     model = load_model_from_mlflow()
     scaler = load_scaler_from_mlflow()
-    return CreditRiskModel(model, scaler)
+    return CreditRiskPredictor(model, scaler)
 
 
 st.title("Профиль клиента", anchor=False)
@@ -92,8 +92,8 @@ with st.container(border=True):
         else:
             st.badge("Без просрочек", color="green", icon=":material/check_circle:")
 
-        risk_model = get_credit_risk_model()
-        score = risk_model.predict_pd(row)
+        predictor = get_credit_risk_predictor()
+        score = predictor.predict_pd(row)
         is_high_risk = score >= 0.5
 
         st.metric(

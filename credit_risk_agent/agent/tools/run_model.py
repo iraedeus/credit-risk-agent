@@ -1,14 +1,14 @@
 from credit_risk_agent.config import TEST_DATABASE_PATH
 from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
-from credit_risk_agent.model.model import CreditRiskModel
+from credit_risk_agent.model.predictor import CreditRiskPredictor
 
 
 def run_model(client_id: int) -> str:
     """
     Run the credit default prediction model for a specified client.
 
-    Loads the pre-trained CreditDefaultPredictor PyTorch model, fetches and
+    Loads the pre-trained CreditDefaultModel PyTorch model, fetches and
     preprocesses the client's test features, and evaluates the neural network
     to obtain a credit default risk score (probability).
 
@@ -34,7 +34,7 @@ def run_model(client_id: int) -> str:
     model = load_model_from_mlflow()
     scaler = load_scaler_from_mlflow()
 
-    risk_model = CreditRiskModel(model, scaler)
-    score = risk_model.predict_pd(client_test_df)
+    predictor = CreditRiskPredictor(model, scaler)
+    score = predictor.predict_pd(client_test_df)
 
     return f"Модель на клиенте с id={client_id} выдала результат равный {score:.4f}."

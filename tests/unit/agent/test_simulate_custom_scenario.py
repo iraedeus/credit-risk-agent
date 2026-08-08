@@ -7,7 +7,7 @@ from credit_risk_agent.agent.tools.simulate_custom_scenario import simulate_cust
 
 
 class TestSimulateCustomScenarioTool:
-    @patch("credit_risk_agent.model.model.prepare_dataset")
+    @patch("credit_risk_agent.model.predictor.prepare_dataset")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_scaler_from_mlflow")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_and_preprocess_from_db")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_model_from_mlflow")
@@ -67,7 +67,7 @@ class TestSimulateCustomScenarioTool:
         result = simulate_custom_scenario(client_id, {"limit_bal": 100000})
         assert result == f"Клиент с client_id = {client_id} не был найден в базе данных."
 
-    @patch("credit_risk_agent.model.model.prepare_dataset")
+    @patch("credit_risk_agent.model.predictor.prepare_dataset")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_scaler_from_mlflow")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_and_preprocess_from_db")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_model_from_mlflow")

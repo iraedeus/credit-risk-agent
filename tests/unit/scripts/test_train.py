@@ -80,7 +80,7 @@ class TestSplitAndSave:
 class TestTrainModel:
     @patch("scripts.train.nn.BCEWithLogitsLoss")
     @patch("scripts.train.torch.save")
-    @patch("scripts.train.CreditDefaultPredictor")
+    @patch("scripts.train.CreditDefaultModel")
     def test_train_model_executes_epoch_loop_and_saves_weights(
         self,
         mock_predictor_cls: MagicMock,

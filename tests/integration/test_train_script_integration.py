@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 import scripts.train as train_module
 from credit_risk_agent.data import StandardScaler
-from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
+from credit_risk_agent.model import CreditDefaultModel, prepare_dataset
 
 
 class TestTrainScriptIntegration:
@@ -92,6 +92,6 @@ class TestTrainScriptIntegration:
         loaded_scaler = StandardScaler.load(scaler_path)
         assert loaded_scaler.mean is not None
 
-        loaded_model = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
+        loaded_model = CreditDefaultModel(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
         loaded_model.load_state_dict(train_module.torch.load(model_path))
         assert loaded_model is not None

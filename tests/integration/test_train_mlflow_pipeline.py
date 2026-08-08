@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 import scripts.train as train_module
 from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
 from credit_risk_agent.data import StandardScaler
-from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
+from credit_risk_agent.model import CreditDefaultModel, prepare_dataset
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 
 
@@ -113,14 +113,14 @@ class TestMLflowPipeline:
         assert loaded_scaler is not None
 
         loaded_model = load_model_from_mlflow(run_id=None)
-        assert isinstance(loaded_model, CreditDefaultPredictor)
+        assert isinstance(loaded_model, CreditDefaultModel)
 
         # --- Step 4: 2nd Training Pass with Worse Loss (Champion v1 should be kept) ---
         worse_loss = loss1 + 10.0  # Artificially higher loss
         with mlflow.start_run(run_name="pass_2_worse"):
             mlflow.log_metric("best_train_loss", worse_loss)
             mlflow.log_artifact(str(train_module.SCALER_PATH), artifact_path="preprocessing")
-            model2 = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
+            model2 = CreditDefaultModel(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
             mlflow.pytorch.log_model(model2, artifact_path="model", serialization_format="pickle")
             train_module.save_champion_model(worse_loss)
 
@@ -132,7 +132,7 @@ class TestMLflowPipeline:
         with mlflow.start_run(run_name="pass_3_better"):
             mlflow.log_metric("best_train_loss", better_loss)
             mlflow.log_artifact(str(train_module.SCALER_PATH), artifact_path="preprocessing")
-            model3 = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
+            model3 = CreditDefaultModel(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
             mlflow.pytorch.log_model(model3, artifact_path="model", serialization_format="pickle")
             train_module.save_champion_model(better_loss)
 
@@ -141,4 +141,4 @@ class TestMLflowPipeline:
 
         # --- Step 6: Verify Inference loads Champion v2 ---
         loaded_model_v2 = load_model_from_mlflow(run_id=None)
-        assert isinstance(loaded_model_v2, CreditDefaultPredictor)
+        assert isinstance(loaded_model_v2, CreditDefaultModel)

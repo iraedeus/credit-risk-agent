@@ -6,7 +6,7 @@ import mlflow.pytorch
 
 from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
 from credit_risk_agent.data import StandardScaler
-from credit_risk_agent.model import CreditDefaultPredictor
+from credit_risk_agent.model.model import CreditDefaultModel
 
 
 def load_scaler_from_mlflow(run_id: str | None = None) -> StandardScaler:
@@ -47,9 +47,9 @@ def load_scaler_from_mlflow(run_id: str | None = None) -> StandardScaler:
     return StandardScaler.load(Path(local_path))
 
 
-def load_model_from_mlflow(run_id: str | None = None) -> CreditDefaultPredictor:
+def load_model_from_mlflow(run_id: str | None = None) -> CreditDefaultModel:
     """
-    Load a trained PyTorch CreditDefaultPredictor model from MLflow.
+    Load a trained PyTorch CreditDefaultModel from MLflow.
 
     If `run_id` is provided, loads the model logged under `runs:/{run_id}/model`.
     Otherwise, loads the champion model directly from MLflow Model Registry
@@ -62,8 +62,8 @@ def load_model_from_mlflow(run_id: str | None = None) -> CreditDefaultPredictor:
 
     Returns
     -------
-    CreditDefaultPredictor
-        Loaded PyTorch CreditDefaultPredictor model instance.
+    CreditDefaultModel
+        Loaded PyTorch CreditDefaultModel instance.
 
     Raises
     ------

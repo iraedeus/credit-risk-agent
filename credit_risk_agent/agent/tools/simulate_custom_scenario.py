@@ -3,7 +3,7 @@ from typing import Any
 from credit_risk_agent.config import TEST_DATABASE_PATH
 from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
-from credit_risk_agent.model.model import CreditRiskModel
+from credit_risk_agent.model.predictor import CreditRiskPredictor
 
 
 def _get_risk_level(pd_val: float) -> str:
@@ -42,9 +42,9 @@ def simulate_custom_scenario(client_id: int, params: dict[str, Any]) -> str:
     scaler = load_scaler_from_mlflow()
     model = load_model_from_mlflow()
 
-    risk_model = CreditRiskModel(model, scaler)
+    predictor = CreditRiskPredictor(model, scaler)
 
-    old_pd = risk_model.predict_pd(client_raw_df)
+    old_pd = predictor.predict_pd(client_raw_df)
 
     simulated_raw_df = client_raw_df.copy()
     applied_changes = []
@@ -63,7 +63,7 @@ def simulate_custom_scenario(client_id: int, params: dict[str, Any]) -> str:
             f"не содержится в признаках клиентов. Проверьте правильность имён полей."
         )
 
-    new_pd = risk_model.predict_pd(simulated_raw_df)
+    new_pd = predictor.predict_pd(simulated_raw_df)
     delta_pd = new_pd - old_pd
     delta_pct = delta_pd * 100
 

@@ -32,7 +32,7 @@ from credit_risk_agent.config import (
 )
 from credit_risk_agent.data import StandardScaler
 from credit_risk_agent.data.loader import load_and_preprocess_from_db
-from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
+from credit_risk_agent.model import CreditDefaultModel, prepare_dataset
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 
 
@@ -111,7 +111,7 @@ def train_model(
     dropout_prob: float = DROPOUT_PROB,
 ) -> tuple[nn.Module, float]:
     """
-    Train the CreditDefaultPredictor neural network model and save trained weights.
+    Train the CreditDefaultModel neural network model and save trained weights.
 
     Parameters
     ----------
@@ -133,10 +133,10 @@ def train_model(
     Returns
     -------
     tuple[nn.Module, float]
-        Tuple containing the trained CreditDefaultPredictor model instance and the best loss value achieved.
+        Tuple containing the trained CreditDefaultModel instance and the best loss value achieved.
     """
 
-    model = CreditDefaultPredictor(
+    model = CreditDefaultModel(
         hidden_size=hidden_size, num_layers=num_layers, static_size=14, dropout_prob=dropout_prob
     )
 
