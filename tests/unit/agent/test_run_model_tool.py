@@ -8,16 +8,14 @@ from credit_risk_agent.agent import run_model
 
 class TestRunModelTool:
     @patch("credit_risk_agent.agent.tools.run_model.prepare_dataset")
-    @patch("credit_risk_agent.agent.tools.run_model.StandardScaler")
+    @patch("credit_risk_agent.agent.tools.run_model.load_scaler_from_mlflow")
     @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
-    @patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
-    @patch("torch.load")
+    @patch("credit_risk_agent.agent.tools.run_model.load_model_from_mlflow")
     def test_run_model_success(
         self,
-        mock_torch_load: MagicMock,
-        mock_predictor_cls: MagicMock,
+        mock_load_model: MagicMock,
         mock_load_data: MagicMock,
-        mock_scaler_cls: MagicMock,
+        mock_load_scaler: MagicMock,
         mock_prepare_dataset: MagicMock,
     ) -> None:
         """Verify successful scoring for an existing client ID."""
@@ -27,7 +25,7 @@ class TestRunModelTool:
         mock_load_data.return_value = mock_df
         mock_scaler_instance = MagicMock()
         mock_scaler_instance.transform.return_value = mock_df
-        mock_scaler_cls.load.return_value = mock_scaler_instance
+        mock_load_scaler.return_value = mock_scaler_instance
 
         dummy_seq = torch.zeros((6, 3))
         dummy_static = torch.zeros((14,))
@@ -35,7 +33,7 @@ class TestRunModelTool:
 
         mock_model_instance = MagicMock()
         mock_model_instance.return_value = torch.tensor([[0.0]])
-        mock_predictor_cls.return_value = mock_model_instance
+        mock_load_model.return_value = mock_model_instance
 
         # 2. Act
         result = run_model(client_id)
@@ -45,16 +43,14 @@ class TestRunModelTool:
         mock_prepare_dataset.assert_called_once()
         mock_model_instance.assert_called_once()
 
-    @patch("credit_risk_agent.agent.tools.run_model.StandardScaler")
+    @patch("credit_risk_agent.agent.tools.run_model.load_scaler_from_mlflow")
     @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
-    @patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
-    @patch("torch.load")
+    @patch("credit_risk_agent.agent.tools.run_model.load_model_from_mlflow")
     def test_run_model_client_not_found(
         self,
-        mock_torch_load: MagicMock,
-        mock_predictor_cls: MagicMock,
+        mock_load_model: MagicMock,
         mock_load_data: MagicMock,
-        mock_scaler_cls: MagicMock,
+        mock_load_scaler: MagicMock,
     ) -> None:
         """Verify tool response when client_id is not found in database."""
         # 1. Arrange
@@ -63,7 +59,10 @@ class TestRunModelTool:
         mock_load_data.return_value = mock_df
         mock_scaler_instance = MagicMock()
         mock_scaler_instance.transform.return_value = mock_df
-        mock_scaler_cls.load.return_value = mock_scaler_instance
+        mock_load_scaler.return_value = mock_scaler_instance
+
+        mock_model_instance = MagicMock()
+        mock_load_model.return_value = mock_model_instance
 
         # 2. Act
         result = run_model(client_id)
@@ -72,16 +71,14 @@ class TestRunModelTool:
         assert result == f"Клиент с id={client_id} не был найден в базе."
 
     @patch("credit_risk_agent.agent.tools.run_model.prepare_dataset")
-    @patch("credit_risk_agent.agent.tools.run_model.StandardScaler")
+    @patch("credit_risk_agent.agent.tools.run_model.load_scaler_from_mlflow")
     @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
-    @patch("credit_risk_agent.agent.tools.run_model.CreditDefaultPredictor")
-    @patch("torch.load")
+    @patch("credit_risk_agent.agent.tools.run_model.load_model_from_mlflow")
     def test_run_model_formatting_precision(
         self,
-        mock_torch_load: MagicMock,
-        mock_predictor_cls: MagicMock,
+        mock_load_model: MagicMock,
         mock_load_data: MagicMock,
-        mock_scaler_cls: MagicMock,
+        mock_load_scaler: MagicMock,
         mock_prepare_dataset: MagicMock,
     ) -> None:
         """Verify model prediction score formatting precision (4 decimal places)."""
@@ -92,7 +89,7 @@ class TestRunModelTool:
         mock_load_data.return_value = mock_df
         mock_scaler_instance = MagicMock()
         mock_scaler_instance.transform.return_value = mock_df
-        mock_scaler_cls.load.return_value = mock_scaler_instance
+        mock_load_scaler.return_value = mock_scaler_instance
 
         dummy_seq = torch.zeros((6, 3))
         dummy_static = torch.zeros((14,))
@@ -101,7 +98,7 @@ class TestRunModelTool:
         mock_model_instance = MagicMock()
         # Logit 2.1972246 -> sigmoid = 0.9000
         mock_model_instance.return_value = torch.tensor([[2.1972246]])
-        mock_predictor_cls.return_value = mock_model_instance
+        mock_load_model.return_value = mock_model_instance
 
         # 2. Act
         result = run_model(client_id)

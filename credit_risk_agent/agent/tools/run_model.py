@@ -1,9 +1,8 @@
 import torch
 
-from credit_risk_agent.config import MODEL_SAVE_PATH, SCALER_COLS, SCALER_PATH, TEST_DATABASE_PATH
-from credit_risk_agent.data.standard_scaler import StandardScaler
+from credit_risk_agent.config import SCALER_COLS, TEST_DATABASE_PATH
 from credit_risk_agent.model.dataset import prepare_dataset
-from credit_risk_agent.model.model import CreditDefaultPredictor
+from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 from scripts.train import load_and_preprocess_from_db
 
 
@@ -27,13 +26,12 @@ def run_model(client_id: int) -> str:
         formatted as a float between 0.0 and 1.0, or an error message if the client
         is not found in the test dataset.
     """
-    model = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
-    state_dict = torch.load(MODEL_SAVE_PATH)
-    model.load_state_dict(state_dict)
+
+    model = load_model_from_mlflow()
     model.eval()
 
     test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
-    scaler = StandardScaler.load(SCALER_PATH)
+    scaler = load_scaler_from_mlflow()
     test_df = scaler.transform(test_df, SCALER_COLS)
     client_test_df = test_df[test_df["client_id"] == client_id]
     if len(client_test_df) == 0:

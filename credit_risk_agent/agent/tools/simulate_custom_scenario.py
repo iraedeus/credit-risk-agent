@@ -2,9 +2,10 @@ from typing import Any
 
 import torch
 
-from credit_risk_agent.config import MODEL_SAVE_PATH, SCALER_COLS, SCALER_PATH, TEST_DATABASE_PATH
+from credit_risk_agent.config import SCALER_COLS, TEST_DATABASE_PATH
 from credit_risk_agent.data.standard_scaler import StandardScaler
 from credit_risk_agent.model.dataset import prepare_dataset
+from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 from credit_risk_agent.model.model import CreditDefaultPredictor
 from scripts.train import load_and_preprocess_from_db
 
@@ -51,11 +52,8 @@ def simulate_custom_scenario(client_id: int, params: dict[str, Any]) -> str:
     if len(client_raw_df) == 0:
         return f"Клиент с client_id = {client_id} не был найден в базе данных."
 
-    scaler = StandardScaler.load(SCALER_PATH)
-
-    model = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
-    state_dict = torch.load(MODEL_SAVE_PATH)
-    model.load_state_dict(state_dict)
+    scaler = load_scaler_from_mlflow()
+    model = load_model_from_mlflow()
     model.eval()
 
     old_pd = _predict_pd(model, client_raw_df, scaler)

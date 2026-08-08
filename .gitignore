@@ -42,3 +42,4 @@ data/*.db
 .agents/
 skills-lock.json
 artifacts/
+mlflow.db

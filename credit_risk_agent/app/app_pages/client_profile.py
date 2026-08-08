@@ -5,9 +5,9 @@ import streamlit as st
 import torch
 from numpy import ndarray
 
-from credit_risk_agent.config import ID_COL, MODEL_SAVE_PATH, SCALER_COLS, SCALER_PATH, TEST_DATABASE_PATH
-from credit_risk_agent.data.standard_scaler import StandardScaler
+from credit_risk_agent.config import ID_COL, SCALER_COLS, TEST_DATABASE_PATH
 from credit_risk_agent.model.dataset import prepare_dataset
+from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 from credit_risk_agent.model.model import CreditDefaultPredictor
 from scripts.train import load_and_preprocess_from_db
 
@@ -38,8 +38,7 @@ def get_client_full_data(client_id: int) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 @st.cache_resource
 def load_ml_model() -> CreditDefaultPredictor:
-    model = CreditDefaultPredictor(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
-    model.load_state_dict(torch.load(MODEL_SAVE_PATH))
+    model = load_model_from_mlflow()
     model.eval()
     return model
 
@@ -47,7 +46,7 @@ def load_ml_model() -> CreditDefaultPredictor:
 @st.cache_data(ttl="30m")
 def load_processed_test_dataset() -> pd.DataFrame:
     test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
-    scaler = StandardScaler.load(SCALER_PATH)
+    scaler = load_scaler_from_mlflow()
     return scaler.transform(test_df, SCALER_COLS)
 
 

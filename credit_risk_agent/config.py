@@ -18,5 +18,12 @@ ARTIFACTS_PATH.mkdir(exist_ok=True)
 SCALER_PATH = ARTIFACTS_PATH / "scaler.json"
 MODEL_SAVE_PATH = ARTIFACTS_PATH / "model.pt"
 
-BATCH_SIZE = 64
+# Model Hyperparameters
+BATCH_SIZE = 32
 LEARNING_RATE = 0.001
+EPOCHS = 25
+HIDDEN_SIZE = 64
+DROPOUT_PROB = 0.28
+
+BEST_MODEL_NAME = "CreditRiskModel"
+BEST_MODEL_ALIAS = "champion"

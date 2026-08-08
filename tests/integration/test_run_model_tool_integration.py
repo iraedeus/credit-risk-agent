@@ -2,14 +2,21 @@ import pandas as pd
 import pytest
 
 from credit_risk_agent.agent.tools import run_model
-from credit_risk_agent.config import DATA_PATH, MODEL_SAVE_PATH, RAW_DATABASE_PATH, SCALER_PATH
+from credit_risk_agent.config import DATA_PATH, TEST_DATABASE_PATH
+from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 
 
 class TestRunModelToolIntegration:
     def test_run_model_integration_smoke(self) -> None:
         """Smoke test for run_model tool using real model weights and dataset artifacts."""
-        if not (MODEL_SAVE_PATH.exists() and SCALER_PATH.exists() and RAW_DATABASE_PATH.exists()):
-            pytest.skip("Model or dataset files are missing, skipping integration test.")
+        if not TEST_DATABASE_PATH.exists():
+            pytest.skip("Test database missing, skipping integration test.")
+
+        try:
+            load_model_from_mlflow()
+            load_scaler_from_mlflow()
+        except Exception:
+            pytest.skip("Champion model or scaler not found in MLflow, skipping integration test.")
 
         test_clients_path = DATA_PATH / "test_clients.csv"
         if test_clients_path.exists():

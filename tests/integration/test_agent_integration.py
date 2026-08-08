@@ -5,14 +5,21 @@ from gigachat.models import FunctionCall, Messages, MessagesRole
 
 from credit_risk_agent.agent.agent import CreditRiskAgent
 from credit_risk_agent.agent.tools import GIGACHAT_FUNCTIONS, TOOLS
-from credit_risk_agent.config import MODEL_SAVE_PATH, RAW_DATABASE_PATH, SCALER_PATH
+from credit_risk_agent.config import TEST_DATABASE_PATH
+from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 
 
 class TestAgentIntegration:
     def test_agent_end_to_end_with_real_tools(self) -> None:
         """Verify end-to-end agent execution with mocked LLM client and real database/model artifacts."""
-        if not (RAW_DATABASE_PATH.exists() and MODEL_SAVE_PATH.exists() and SCALER_PATH.exists()):
-            pytest.skip("Database or model artifacts are missing, skipping agent integration test.")
+        if not TEST_DATABASE_PATH.exists():
+            pytest.skip("Test database missing, skipping agent integration test.")
+
+        try:
+            load_model_from_mlflow()
+            load_scaler_from_mlflow()
+        except Exception:
+            pytest.skip("Champion model or scaler not found in MLflow, skipping agent integration test.")
 
         # Arrange: Setup mock GigaChat client with 3-step conversation
         mock_client = MagicMock()

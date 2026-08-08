@@ -80,7 +80,7 @@ class TestTrainScriptIntegration:
 
         # Train for 1 epoch for fast integration test
         with patch("scripts.train.range", return_value=range(1)):
-            model = train_module.train_model(train_loader, model_path)
+            model, _ = train_module.train_model(train_loader, model_path)
             train_module.check_model_quality(model, test_loader)
 
         # 3. Assert: Verify generated artifacts
