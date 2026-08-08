@@ -1,3 +1,7 @@
+"""
+ETL script to download Kaggle UCI Credit Card dataset and build SQLite database.
+"""
+
 import sqlite3
 
 import pandas as pd

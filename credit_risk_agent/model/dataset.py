@@ -1,3 +1,7 @@
+"""
+PyTorch Dataset construct and tabular tensor preparation routines.
+"""
+
 import numpy as np
 import pandas as pd
 import torch
@@ -14,6 +18,15 @@ class CreditDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
     1. A 3D sequence tensor of shape (seq_len, 3) representing payment history.
     2. A 1D static tensor of shape (14,) representing client demographic and limit characteristics.
     3. A 1D target tensor of shape (1,) representing the default label (0 or 1).
+
+    Parameters
+    ----------
+    sequences : np.ndarray
+        3D array of sequence features with shape (N, seq_len, 3).
+    static_features : np.ndarray
+        2D array of static features with shape (N, static_size).
+    labels : np.ndarray
+        1D array of target default binary labels with shape (N,).
     """
 
     def __init__(self, sequences: np.ndarray, static_features: np.ndarray, labels: np.ndarray) -> None:
@@ -22,9 +35,30 @@ class CreditDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
         self.labels = torch.tensor(labels.copy(), dtype=torch.float32).unsqueeze(-1)
 
     def __len__(self) -> int:
+        """
+        Return the total number of client samples in the dataset.
+
+        Returns
+        -------
+        int
+            Number of client samples.
+        """
         return len(self.labels)
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Retrieve sequence features, static features, and label for sample index.
+
+        Parameters
+        ----------
+        idx : int
+            Sample index integer.
+
+        Returns
+        -------
+        tuple of (torch.Tensor, torch.Tensor, torch.Tensor)
+            Tuple of (sequence_features, static_features, label_tensor).
+        """
         return self.sequences[idx], self.static_features[idx], self.labels[idx]
 
 

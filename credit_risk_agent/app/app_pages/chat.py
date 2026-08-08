@@ -1,3 +1,7 @@
+"""
+Streamlit interactive chat interface page for Credit Risk AI Agent.
+"""
+
 import os
 
 import streamlit as st
@@ -21,6 +25,14 @@ load_dotenv()
 # Инициализация GigaChat клиента и CreditRiskAgent
 @st.cache_resource
 def get_agent() -> CreditRiskAgent | None:
+    """
+    Initialize and cache CreditRiskAgent instance using environment credentials.
+
+    Returns
+    -------
+    CreditRiskAgent or None
+        Initialized agent instance, or None if GigaChat credentials are missing.
+    """
     credentials = os.getenv("GIGACHAT_CREDENTIALS") or st.secrets.get("GIGACHAT_CREDENTIALS", None)
     if not credentials or credentials == "your_gigachat_authorization_data":
         return None

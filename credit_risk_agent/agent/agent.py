@@ -1,3 +1,7 @@
+"""
+Autonomous ReAct agent loop for GigaChat function calling and tool execution.
+"""
+
 import json
 from collections.abc import Iterator
 
@@ -121,6 +125,19 @@ class CreditRiskAgent:
         self.history: list[Messages] = [Messages(role=MessagesRole.SYSTEM, content=system_prompt)]
 
     def run_stream(self, user_prompt: str) -> Iterator[AgentEvent]:
+        """
+        Execute the ReAct loop for a given prompt, yielding streaming AgentEvent objects.
+
+        Parameters
+        ----------
+        user_prompt : str
+            User query or command string.
+
+        Yields
+        ------
+        AgentEvent
+            ThoughtEvent, ToolCallEvent, ObservationEvent, FinalEvent, or ErrorEvent.
+        """
         self.history.append(Messages(role=MessagesRole.USER, content=user_prompt))
 
         for i in range(self.max_iterations):
@@ -204,4 +221,7 @@ class CreditRiskAgent:
         return final_text
 
     def clear_history(self) -> None:
+        """
+        Reset message history back to the initial system prompt.
+        """
         self.history = [Messages(role=MessagesRole.SYSTEM, content=self.system_prompt)]

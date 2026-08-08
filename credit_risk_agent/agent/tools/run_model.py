@@ -1,3 +1,7 @@
+"""
+Model evaluation tool for predicting client credit default probability.
+"""
+
 from credit_risk_agent.config import TEST_DATABASE_PATH
 from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow

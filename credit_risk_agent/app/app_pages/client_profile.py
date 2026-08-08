@@ -1,3 +1,7 @@
+"""
+Streamlit dashboard page for client profile analysis and risk evaluation.
+"""
+
 import sqlite3
 
 import pandas as pd
@@ -16,6 +20,14 @@ MARRIAGE_MAP = {1: "Женат / Замужем", 2: "Холост / Не зам
 
 @st.cache_data(ttl="30m")
 def get_available_clients_id() -> ndarray:
+    """
+    Fetch array of unique client IDs present in the test database.
+
+    Returns
+    -------
+    ndarray
+        Array of integer client IDs.
+    """
     with sqlite3.connect(TEST_DATABASE_PATH) as conn:
         client_ids = pd.read_sql_query("SELECT client_id FROM clients", conn)
         return client_ids[ID_COL].values.astype(int)
@@ -23,6 +35,19 @@ def get_available_clients_id() -> ndarray:
 
 @st.cache_data(ttl="30m")
 def get_client_full_data(client_id: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Fetch demographic and 6-month payment history records for a specified client ID.
+
+    Parameters
+    ----------
+    client_id : int
+        Unique client identifier.
+
+    Returns
+    -------
+    tuple of (pd.DataFrame, pd.DataFrame)
+        Tuple containing client demographics DataFrame and payment history DataFrame.
+    """
     with sqlite3.connect(TEST_DATABASE_PATH) as conn:
         client_info = pd.read_sql_query("SELECT * FROM clients WHERE client_id = ?", conn, params=[client_id])
         history = pd.read_sql_query(
@@ -36,6 +61,14 @@ def get_client_full_data(client_id: int) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 @st.cache_data(ttl="30m")
 def load_processed_test_dataset() -> pd.DataFrame:
+    """
+    Load and normalize full test dataset using MLflow scaler.
+
+    Returns
+    -------
+    pd.DataFrame
+        Normalized test dataset DataFrame.
+    """
     test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
     scaler = load_scaler_from_mlflow()
     return scaler.transform(test_df, SCALER_COLS)
@@ -43,6 +76,14 @@ def load_processed_test_dataset() -> pd.DataFrame:
 
 @st.cache_resource
 def get_credit_risk_predictor() -> CreditRiskPredictor:
+    """
+    Load MLflow model and scaler once and cache CreditRiskPredictor instance.
+
+    Returns
+    -------
+    CreditRiskPredictor
+        Cached predictor instance.
+    """
     model = load_model_from_mlflow()
     scaler = load_scaler_from_mlflow()
     return CreditRiskPredictor(model, scaler)

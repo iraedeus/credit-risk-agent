@@ -1,3 +1,7 @@
+"""
+Command Line Interface (CLI) application for interacting with Credit Risk Agent.
+"""
+
 import argparse
 import os
 
@@ -11,11 +15,29 @@ from credit_risk_agent.config import ARTIFACTS_PATH
 
 
 def get_client_info(client_id: int) -> None:
+    """
+    Print model prediction and financial metrics report for a specified client ID.
+
+    Parameters
+    ----------
+    client_id : int
+        The unique identifier of the client.
+    """
     print(run_model(client_id))
     print(get_client_financial_metrics(client_id))
 
 
 def prompt_agent(prompt: str, verbose: bool = False) -> None:
+    """
+    Send a single prompt query to the CreditRiskAgent and print the response.
+
+    Parameters
+    ----------
+    prompt : str
+        The query string for the agent.
+    verbose : bool, default=False
+        Whether to print intermediate ReAct thoughts and tool observations.
+    """
     load_dotenv()
     credentials = os.getenv("GIGACHAT_CREDENTIALS")
 
@@ -30,6 +52,14 @@ def prompt_agent(prompt: str, verbose: bool = False) -> None:
 
 
 def chat_agent(verbose: bool = False) -> None:
+    """
+    Start an interactive multi-turn REPL chat session with CreditRiskAgent.
+
+    Parameters
+    ----------
+    verbose : bool, default=False
+        Whether to print intermediate thoughts and tool executions.
+    """
     load_dotenv()
     credentials = os.getenv("GIGACHAT_CREDENTIALS")
 
@@ -54,6 +84,14 @@ def chat_agent(verbose: bool = False) -> None:
 
 
 def list_test_clients(limit: int = 10) -> None:
+    """
+    Display a list of available test client IDs from dataset artifacts.
+
+    Parameters
+    ----------
+    limit : int, default=10
+        Maximum number of client IDs to display.
+    """
     test_clients = pd.read_csv(ARTIFACTS_PATH / "test_clients.csv")
     ids = test_clients["client_id"].head(limit).astype(str).to_list()
     print(f"Доступные ID клиентов (первые {len(ids)}):")
@@ -61,6 +99,9 @@ def list_test_clients(limit: int = 10) -> None:
 
 
 def main() -> None:
+    """
+    Parse command-line arguments and execute chosen CLI mode.
+    """
     parser = argparse.ArgumentParser(
         description="Command line interface для AI-агента кредитного скоринга и оценки рисков дефолта заёмщиков"
     )

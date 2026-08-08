@@ -1,8 +1,13 @@
+"""
+Relational database data loader and merging pipeline.
+"""
+
 import sqlite3
 from pathlib import Path
 
-from credit_risk_agent.data.preprocessing import preprocess
 import pandas as pd
+
+from credit_risk_agent.data.preprocessing import preprocess
 
 
 def load_and_preprocess_from_db(db_path: Path) -> pd.DataFrame:

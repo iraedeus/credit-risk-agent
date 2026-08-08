@@ -1,3 +1,7 @@
+"""
+What-If scenario simulation tool for evaluating modified client feature hypotheses.
+"""
+
 from typing import Any
 
 from credit_risk_agent.config import TEST_DATABASE_PATH
@@ -7,6 +11,19 @@ from credit_risk_agent.model.predictor import CreditRiskPredictor
 
 
 def _get_risk_level(pd_val: float) -> str:
+    """
+    Map probability of default (PD) value to human-readable risk category.
+
+    Parameters
+    ----------
+    pd_val : float
+        Probability of default float between 0.0 and 1.0.
+
+    Returns
+    -------
+    str
+        Risk level description string.
+    """
     if pd_val < 0.35:
         return "Низкий риск"
     elif pd_val < 0.55:

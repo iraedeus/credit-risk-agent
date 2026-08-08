@@ -1,3 +1,7 @@
+"""
+PyTorch neural network architecture for credit default prediction.
+"""
+
 from typing import cast
 
 import torch

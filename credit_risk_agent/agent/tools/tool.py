@@ -1,3 +1,7 @@
+"""
+Tool abstraction class converting Python callables to GigaChat function schemas.
+"""
+
 import inspect
 from collections.abc import Callable
 from typing import Any

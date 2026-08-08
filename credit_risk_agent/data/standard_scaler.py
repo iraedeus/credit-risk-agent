@@ -1,3 +1,7 @@
+"""
+Custom feature standardization scaler with JSON serialization support.
+"""
+
 import json
 from pathlib import Path
 

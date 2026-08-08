@@ -1,3 +1,7 @@
+"""
+High-level domain predictor wrapper combining model evaluation and feature scaling.
+"""
+
 import pandas as pd
 import torch
 
@@ -10,6 +14,13 @@ from credit_risk_agent.model.model import CreditDefaultModel
 class CreditRiskPredictor:
     """
     High-level domain predictor encapsulating the PyTorch CreditDefaultModel and StandardScaler.
+
+    Parameters
+    ----------
+    model : CreditDefaultModel
+        Pre-trained PyTorch credit default neural network.
+    scaler : StandardScaler
+        Fitted StandardScaler instance for normalizing numerical features.
     """
 
     def __init__(self, model: CreditDefaultModel, scaler: StandardScaler) -> None:

@@ -1,3 +1,7 @@
+"""
+Streamlit Web Application entry point and navigation router.
+"""
+
 import streamlit as st
 
 # Глобальная настройка страницы (должна быть первой вызвана)

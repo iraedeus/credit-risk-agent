@@ -1,3 +1,7 @@
+"""
+Model training CLI script, evaluation pipeline, and MLflow champion registration.
+"""
+
 import argparse
 import copy
 import sqlite3
