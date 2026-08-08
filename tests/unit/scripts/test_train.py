@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import pytest
 import torch
 
 from scripts.train import (
@@ -206,6 +207,7 @@ class TestMainCLI:
         mock_train.assert_called_once()
         mock_check_quality.assert_called_once()
 
+    @patch("scripts.train.TEST_DATABASE_PATH")
     @patch("scripts.train.check_model_quality")
     @patch("scripts.train.load_model_from_mlflow")
     @patch("scripts.train.prepare_dataset")
@@ -220,9 +222,11 @@ class TestMainCLI:
         mock_prep_ds: MagicMock,
         mock_load_model: MagicMock,
         mock_check_quality: MagicMock,
+        mock_test_db_path: MagicMock,
     ) -> None:
         """Verify --view-quality CLI execution skips training and evaluates saved model weights."""
         # Arrange
+        mock_test_db_path.exists.return_value = True
         mock_args = MagicMock()
         mock_args.view_quality = True
         mock_args.run_id = "test_run_id_123"
@@ -253,3 +257,21 @@ class TestMainCLI:
         mock_load_scaler.assert_called_once_with("test_run_id_123")
         mock_load_model.assert_called_once_with("test_run_id_123")
         mock_check_quality.assert_called_once()
+
+    @patch("scripts.train.TEST_DATABASE_PATH")
+    @patch("argparse.ArgumentParser.parse_args")
+    def test_main_view_quality_mode_missing_db_raises_file_not_found(
+        self,
+        mock_parse_args: MagicMock,
+        mock_test_db_path: MagicMock,
+    ) -> None:
+        """Verify --view-quality raises FileNotFoundError when TEST_DATABASE_PATH does not exist."""
+        # Arrange
+        mock_test_db_path.exists.return_value = False
+        mock_args = MagicMock()
+        mock_args.view_quality = True
+        mock_parse_args.return_value = mock_args
+
+        # Act & Assert
+        with pytest.raises(FileNotFoundError, match="Тестовая БД не существует"):
+            main()

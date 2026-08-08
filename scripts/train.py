@@ -302,6 +302,9 @@ def main() -> None:
     args = configure_argparser()
 
     if args.view_quality:
+        if not TEST_DATABASE_PATH.exists():
+            raise FileNotFoundError("Тестовая БД не существует. Пожалуйста запустите скрипт подготовки данных.")
+
         print("Загрузка сохраненной модели и оценка качества на тестовой выборке...")
         test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
         scaler = load_scaler_from_mlflow(args.run_id)
