@@ -5,9 +5,9 @@ import pandas as pd
 import pytest
 import torch
 
+from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from scripts.train import (
     check_model_quality,
-    load_and_preprocess_from_db,
     main,
     save_split_db,
     train_model,
@@ -15,9 +15,9 @@ from scripts.train import (
 
 
 class TestLoadData:
-    @patch("scripts.train.preprocess")
-    @patch("scripts.train.pd.read_sql_query")
-    @patch("scripts.train.sqlite3.connect")
+    @patch("credit_risk_agent.data.loader.preprocess")
+    @patch("credit_risk_agent.data.loader.pd.read_sql_query")
+    @patch("credit_risk_agent.data.loader.sqlite3.connect")
     def test_load_and_preprocess_from_db_success(
         self, mock_connect: MagicMock, mock_read_sql: MagicMock, mock_preprocess: MagicMock
     ) -> None:

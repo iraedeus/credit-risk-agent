@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from credit_risk_agent.model.model import CreditDefaultPredictor
+from credit_risk_agent.model.predictor import CreditDefaultPredictor
 
 
 class TestCreditDefaultPredictor:

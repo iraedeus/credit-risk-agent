@@ -2,14 +2,12 @@ import sqlite3
 
 import pandas as pd
 import streamlit as st
-import torch
 from numpy import ndarray
 
 from credit_risk_agent.config import ID_COL, SCALER_COLS, TEST_DATABASE_PATH
-from credit_risk_agent.model.dataset import prepare_dataset
+from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
-from credit_risk_agent.model.model import CreditDefaultPredictor
-from scripts.train import load_and_preprocess_from_db
+from credit_risk_agent.model.model import CreditRiskModel
 
 SEX_MAP = {1: "Мужской", 2: "Женский"}
 EDUCATION_MAP = {1: "Аспирантура/Магистратура", 2: "Университет", 3: "Старшая школа", 4: "Другое"}
@@ -36,13 +34,6 @@ def get_client_full_data(client_id: int) -> tuple[pd.DataFrame, pd.DataFrame]:
         return client_info, history
 
 
-@st.cache_resource
-def load_ml_model() -> CreditDefaultPredictor:
-    model = load_model_from_mlflow()
-    model.eval()
-    return model
-
-
 @st.cache_data(ttl="30m")
 def load_processed_test_dataset() -> pd.DataFrame:
     test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
@@ -50,18 +41,11 @@ def load_processed_test_dataset() -> pd.DataFrame:
     return scaler.transform(test_df, SCALER_COLS)
 
 
-@st.cache_data(ttl="30m")
-def run_model(client_id: int) -> float:
-    model = load_ml_model()
-    test_df = load_processed_test_dataset()
-
-    client_test_df = test_df[test_df["client_id"] == client_id]
-
-    test_dataset = prepare_dataset(client_test_df)
-
-    with torch.no_grad():
-        score = torch.sigmoid(model(test_dataset[0][0].unsqueeze(0), test_dataset[0][1].unsqueeze(0))).item()
-        return float(score)
+@st.cache_resource
+def get_credit_risk_model() -> CreditRiskModel:
+    model = load_model_from_mlflow()
+    scaler = load_scaler_from_mlflow()
+    return CreditRiskModel(model, scaler)
 
 
 st.title("Профиль клиента", anchor=False)
@@ -108,7 +92,8 @@ with st.container(border=True):
         else:
             st.badge("Без просрочек", color="green", icon=":material/check_circle:")
 
-        score = run_model(selected_client_id)
+        risk_model = get_credit_risk_model()
+        score = risk_model.predict_pd(row)
         is_high_risk = score >= 0.5
 
         st.metric(

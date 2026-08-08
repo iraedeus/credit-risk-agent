@@ -7,7 +7,7 @@ from credit_risk_agent.agent import run_model
 
 
 class TestRunModelTool:
-    @patch("credit_risk_agent.agent.tools.run_model.prepare_dataset")
+    @patch("credit_risk_agent.model.model.prepare_dataset")
     @patch("credit_risk_agent.agent.tools.run_model.load_scaler_from_mlflow")
     @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
     @patch("credit_risk_agent.agent.tools.run_model.load_model_from_mlflow")
@@ -70,7 +70,7 @@ class TestRunModelTool:
         # 3. Assert
         assert result == f"Клиент с id={client_id} не был найден в базе."
 
-    @patch("credit_risk_agent.agent.tools.run_model.prepare_dataset")
+    @patch("credit_risk_agent.model.model.prepare_dataset")
     @patch("credit_risk_agent.agent.tools.run_model.load_scaler_from_mlflow")
     @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
     @patch("credit_risk_agent.agent.tools.run_model.load_model_from_mlflow")

@@ -1,9 +1,7 @@
-import torch
-
-from credit_risk_agent.config import SCALER_COLS, TEST_DATABASE_PATH
-from credit_risk_agent.model.dataset import prepare_dataset
+from credit_risk_agent.config import TEST_DATABASE_PATH
+from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
-from scripts.train import load_and_preprocess_from_db
+from credit_risk_agent.model.model import CreditRiskModel
 
 
 def run_model(client_id: int) -> str:
@@ -27,18 +25,16 @@ def run_model(client_id: int) -> str:
         is not found in the test dataset.
     """
 
-    model = load_model_from_mlflow()
-    model.eval()
-
     test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
-    scaler = load_scaler_from_mlflow()
-    test_df = scaler.transform(test_df, SCALER_COLS)
+
     client_test_df = test_df[test_df["client_id"] == client_id]
     if len(client_test_df) == 0:
         return f"Клиент с id={client_id} не был найден в базе."
 
-    test_dataset = prepare_dataset(client_test_df)
+    model = load_model_from_mlflow()
+    scaler = load_scaler_from_mlflow()
 
-    with torch.no_grad():
-        score = torch.sigmoid(model(test_dataset[0][0].unsqueeze(0), test_dataset[0][1].unsqueeze(0))).item()
-        return f"Модель на клиенте с id={client_id} выдала результат равный {score:.4f}."
+    risk_model = CreditRiskModel(model, scaler)
+    score = risk_model.predict_pd(client_test_df)
+
+    return f"Модель на клиенте с id={client_id} выдала результат равный {score:.4f}."

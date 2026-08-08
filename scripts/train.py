@@ -30,7 +30,8 @@ from credit_risk_agent.config import (
     TEST_DATABASE_PATH,
     TRAIN_DATABASE_PATH,
 )
-from credit_risk_agent.data import StandardScaler, preprocess
+from credit_risk_agent.data import StandardScaler
+from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from credit_risk_agent.model import CreditDefaultPredictor, prepare_dataset
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 
@@ -57,33 +58,6 @@ def configure_argparser() -> argparse.Namespace:
     parser.add_argument("--run-name", type=str, default="baseline_run", help="Имя запуска в MLflow")
 
     return parser.parse_args()
-
-
-def load_and_preprocess_from_db(db_path: Path) -> pd.DataFrame:
-    """
-    Load raw relational tables from a SQLite database, merge them, and apply preprocessing.
-
-    Parameters
-    ----------
-    db_path : Path
-        Path to the SQLite database file containing `clients`, `payment_history`,
-        and `ground_truth` tables.
-
-    Returns
-    -------
-    pd.DataFrame
-        Preprocessed DataFrame containing combined client features and payment history.
-    """
-
-    with sqlite3.connect(db_path) as conn:
-        client_df = pd.read_sql_query("SELECT * FROM clients", conn)
-        history_df = pd.read_sql_query("SELECT * FROM payment_history", conn)
-        gt_df = pd.read_sql_query("SELECT * FROM ground_truth", conn)
-
-        df = pd.merge(client_df, gt_df, on="client_id")
-        df = pd.merge(df, history_df, on="client_id")
-        df = preprocess(df)
-        return df
 
 
 def save_split_db() -> None:
