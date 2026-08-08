@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 from gigachat import GigaChat
 
 from credit_risk_agent.agent.agent import CreditRiskAgent
-from credit_risk_agent.config import MODEL_SAVE_PATH, RAW_DATABASE_PATH
+from credit_risk_agent.config import TEST_DATABASE_PATH
+from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
 
 load_dotenv()
 
@@ -17,8 +18,14 @@ class TestAgentLive:
         if not credentials or credentials == "your_gigachat_authorization_data":
             pytest.skip("GIGACHAT_CREDENTIALS environment variable is not set, skipping live API test.")
 
-        if not (RAW_DATABASE_PATH.exists() and MODEL_SAVE_PATH.exists()):
-            pytest.skip("Database or model artifacts are missing, skipping live API test.")
+        if not TEST_DATABASE_PATH.exists():
+            pytest.skip("Test database missing, skipping live API test.")
+
+        try:
+            load_model_from_mlflow()
+            load_scaler_from_mlflow()
+        except Exception:
+            pytest.skip("Champion model or scaler not found in MLflow, skipping live API test.")
 
         with GigaChat(credentials=credentials, verify_ssl_certs=False) as client:
             agent = CreditRiskAgent(client=client, max_iterations=10)
