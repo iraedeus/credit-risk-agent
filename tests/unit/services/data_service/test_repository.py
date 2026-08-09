@@ -53,6 +53,12 @@ class TestDataRepository:
         assert clients_lim_2 == [1, 3]
         assert clients_lim_7 == [1, 3, 5, 7, 9, 11, 13]
 
+    def test_get_clients_with_big_offset(self, many_client_db: Session):
+        repo = DataRepository(many_client_db)
+        clients = repo.get_clients(0, 100)
+
+        assert clients == []
+
     def test_get_client_profile(self, seeded_db: Session):
         repo = DataRepository(seeded_db)
         profile = repo.get_client_profile(1)
