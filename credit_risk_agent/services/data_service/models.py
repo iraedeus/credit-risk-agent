@@ -1,5 +1,5 @@
 from sqlalchemy import Float, ForeignKey, Integer
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -16,6 +16,10 @@ class ClientDB(Base):
     marriage: Mapped[int] = mapped_column(Integer, nullable=False)
     age: Mapped[int] = mapped_column(Integer, nullable=False)
 
+    history: Mapped[list["PaymentHistoryDB"]] = relationship(
+        "PaymentHistoryDB", back_populates="client", cascade="all, delete-orphan"
+    )
+
 
 class PaymentHistoryDB(Base):
     __tablename__ = "payment_history"
@@ -27,3 +31,5 @@ class PaymentHistoryDB(Base):
     pay_status: Mapped[int] = mapped_column(Integer, nullable=False)
     bill_amt: Mapped[float] = mapped_column(Float, nullable=False)
     pay_amt: Mapped[float] = mapped_column(Float, nullable=False)
+
+    client: Mapped[ClientDB] = relationship(ClientDB, back_populates="history")
