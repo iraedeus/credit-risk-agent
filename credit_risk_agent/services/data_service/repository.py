@@ -72,4 +72,11 @@ class DataRepository:
         return ClientFinancialMetrics.model_validate(metrics_data)
 
     def get_client_full(self, client_id: int) -> ClientFullInfo | None:
-        pass
+        profile = self.get_client_profile(client_id)
+        history = self.get_client_history(client_id)
+        metrics = self.get_client_financial(client_id)
+
+        if profile is None or history is None or metrics is None:
+            return None
+
+        return ClientFullInfo(profile=profile, history=history, metrics=metrics)
