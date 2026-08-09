@@ -1,3 +1,7 @@
+"""
+Data repository providing database query abstractions for the Data Service.
+"""
+
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
@@ -11,14 +15,51 @@ from credit_risk_agent.services.data_service.models import ClientDB, PaymentHist
 
 
 class DataRepository:
-    def __init__(self, session: Session):
+    """
+    Repository layer for querying client demographics, payment histories, and financial metrics.
+
+    Parameters
+    ----------
+    session : Session
+        Active SQLAlchemy database session.
+    """
+
+    def __init__(self, session: Session) -> None:
         self.session = session
 
     def get_clients(self, limit: int = 20, offset: int = 0) -> list[int]:
+        """
+        Fetch a paginated list of client IDs sorted in ascending order.
+
+        Parameters
+        ----------
+        limit : int, default=20
+            Maximum number of client IDs to return.
+        offset : int, default=0
+            Number of client IDs to skip for pagination.
+
+        Returns
+        -------
+        list of int
+            List of client IDs retrieved from the database.
+        """
         stmt = select(ClientDB.client_id).order_by(ClientDB.client_id).offset(offset).limit(limit)
         return list(self.session.scalars(stmt).all())
 
     def get_client_profile(self, client_id: int) -> ClientProfile | None:
+        """
+        Retrieve demographic and basic credit profile for a given client.
+
+        Parameters
+        ----------
+        client_id : int
+            Unique identifier of the target client.
+
+        Returns
+        -------
+        ClientProfile or None
+            Pydantic model containing client demographic details, or None if the client is not found.
+        """
         client_row = self.session.get(ClientDB, client_id)
 
         if client_row is None:
@@ -27,6 +68,19 @@ class DataRepository:
         return ClientProfile.model_validate(client_row)
 
     def get_client_history(self, client_id: int) -> list[ClientPaymentHistory] | None:
+        """
+        Retrieve monthly payment history entries for a given client ordered by month.
+
+        Parameters
+        ----------
+        client_id : int
+            Unique identifier of the target client.
+
+        Returns
+        -------
+        list of ClientPaymentHistory or None
+            List of payment history records sorted by month, or None if no records exist.
+        """
         stmt = select(PaymentHistoryDB).where(PaymentHistoryDB.client_id == client_id).order_by(PaymentHistoryDB.month)
         history_rows = self.session.scalars(stmt).all()
 
@@ -36,6 +90,22 @@ class DataRepository:
         return [ClientPaymentHistory.model_validate(row) for row in history_rows]
 
     def get_client_financial(self, client_id: int) -> ClientFinancialMetrics | None:
+        """
+        Calculate aggregated financial metrics and delinquency statistics for a given client.
+
+        Computes average bill, credit utilization ratios, average payment, total repayment rate,
+        maximum payment delay status, and total count of delayed months across historical data.
+
+        Parameters
+        ----------
+        client_id : int
+            Unique identifier of the target client.
+
+        Returns
+        -------
+        ClientFinancialMetrics or None
+            Computed financial metrics for the client, or None if no record exists.
+        """
         stmt = (
             select(
                 ClientDB.limit_bal,
@@ -76,6 +146,20 @@ class DataRepository:
         return ClientFinancialMetrics.model_validate(metrics_data)
 
     def get_client_full(self, client_id: int) -> ClientFullInfo | None:
+        """
+        Retrieve combined client information including profile, payment history, and financial metrics.
+
+        Parameters
+        ----------
+        client_id : int
+            Unique identifier of the target client.
+
+        Returns
+        -------
+        ClientFullInfo or None
+            Aggregated client record containing profile, payment history, and metrics,
+            or None if any component is missing.
+        """
         profile = self.get_client_profile(client_id)
         history = self.get_client_history(client_id)
         metrics = self.get_client_financial(client_id)
