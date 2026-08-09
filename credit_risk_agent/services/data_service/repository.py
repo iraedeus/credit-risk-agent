@@ -14,6 +14,10 @@ class DataRepository:
     def __init__(self, session: Session):
         self.session = session
 
+    def get_clients(self, limit: int = 20, offset: int = 0) -> list[int]:
+        stmt = select(ClientDB.client_id).order_by(ClientDB.client_id).offset(offset).limit(limit)
+        return list(self.session.scalars(stmt).all())
+
     def get_client_profile(self, client_id: int) -> ClientProfile | None:
         client_row = self.session.get(ClientDB, client_id)
 
@@ -24,7 +28,7 @@ class DataRepository:
 
     def get_client_history(self, client_id: int) -> list[ClientPaymentHistory] | None:
         stmt = select(PaymentHistoryDB).where(PaymentHistoryDB.client_id == client_id).order_by(PaymentHistoryDB.month)
-        history_rows = list(self.session.scalars(stmt).all())
+        history_rows = self.session.scalars(stmt).all()
 
         if not history_rows:
             return None

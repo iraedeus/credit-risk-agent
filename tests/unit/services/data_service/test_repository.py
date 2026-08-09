@@ -32,7 +32,27 @@ def seeded_db(db_session: Session) -> Generator[Session, None, None]:
     yield db_session
 
 
+@pytest.fixture
+def many_client_db(db_session: Session) -> Generator[Session, None, None]:
+    for client_id in range(1, 20, 2):
+        db_session.add(ClientDB(client_id=client_id, limit_bal=100000.0, sex=1, education=2, marriage=1, age=30))
+    db_session.commit()
+    yield db_session
+
+
 class TestDataRepository:
+    def test_get_clients(self, many_client_db: Session):
+        repo = DataRepository(many_client_db)
+        clients_off_0 = repo.get_clients(5, 0)
+        clients_off_3 = repo.get_clients(5, 3)
+        clients_lim_2 = repo.get_clients(2, 0)
+        clients_lim_7 = repo.get_clients(7, 0)
+
+        assert clients_off_0 == [1, 3, 5, 7, 9]
+        assert clients_off_3 == [7, 9, 11, 13, 15]
+        assert clients_lim_2 == [1, 3]
+        assert clients_lim_7 == [1, 3, 5, 7, 9, 11, 13]
+
     def test_get_client_profile(self, seeded_db: Session):
         repo = DataRepository(seeded_db)
         profile = repo.get_client_profile(1)
