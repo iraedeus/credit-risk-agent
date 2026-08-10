@@ -4,14 +4,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
-from credit_risk_agent.schemas.data_schemas import (
+from credit_risk_agent.services.data_service.dependencies import get_repo
+from credit_risk_agent.services.data_service.repository import DataRepository
+from credit_risk_agent.services.data_service.schemas import (
     ClientFinancialMetrics,
     ClientFullInfo,
     ClientPaymentHistory,
     ClientProfile,
 )
-from credit_risk_agent.services.data_service.dependencies import get_repo
-from credit_risk_agent.services.data_service.repository import DataRepository
 
 router = APIRouter(prefix="/api/v1/clients", tags=["Clients"])
 

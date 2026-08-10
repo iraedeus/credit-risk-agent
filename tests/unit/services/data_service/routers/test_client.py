@@ -5,15 +5,15 @@ from fastapi.testclient import TestClient
 from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from credit_risk_agent.schemas.data_schemas import (
+from credit_risk_agent.services.data_service.dependencies import get_db
+from credit_risk_agent.services.data_service.main import app
+from credit_risk_agent.services.data_service.models import Base, ClientDB, PaymentHistoryDB
+from credit_risk_agent.services.data_service.schemas import (
     ClientFinancialMetrics,
     ClientFullInfo,
     ClientPaymentHistory,
     ClientProfile,
 )
-from credit_risk_agent.services.data_service.dependencies import get_db
-from credit_risk_agent.services.data_service.main import app
-from credit_risk_agent.services.data_service.models import Base, ClientDB, PaymentHistoryDB
 
 
 @pytest.fixture

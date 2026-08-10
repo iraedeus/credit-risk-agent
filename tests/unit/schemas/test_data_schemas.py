@@ -5,13 +5,13 @@ Unit tests for data schemas validation.
 import pytest
 from pydantic import ValidationError
 
-from credit_risk_agent.schemas.data_schemas import (
+from credit_risk_agent.schemas.enums import Education, Marriage, Sex
+from credit_risk_agent.services.data_service.schemas import (
     ClientFinancialMetrics,
     ClientFullInfo,
     ClientPaymentHistory,
     ClientProfile,
 )
-from credit_risk_agent.schemas.enums import Education, Marriage, Sex
 
 
 class TestDataSchemas:

@@ -5,13 +5,13 @@ Data repository providing database query abstractions for the Data Service.
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from credit_risk_agent.schemas.data_schemas import (
+from credit_risk_agent.services.data_service.models import ClientDB, PaymentHistoryDB
+from credit_risk_agent.services.data_service.schemas import (
     ClientFinancialMetrics,
     ClientFullInfo,
     ClientPaymentHistory,
     ClientProfile,
 )
-from credit_risk_agent.services.data_service.models import ClientDB, PaymentHistoryDB
 
 
 class DataRepository:
