@@ -19,6 +19,14 @@ SessionLocal = sessionmaker(bind=engine)
 
 
 def get_db() -> Generator[Session, None, None]:
+    """
+    Provide a transactional database session for a single HTTP request.
+
+    Yields
+    ------
+    Session
+        Active SQLAlchemy database session.
+    """
     session = SessionLocal()
     try:
         yield session
@@ -27,4 +35,17 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def get_repo(session: Annotated[Session, Depends(get_db)]) -> DataRepository:
+    """
+    Provide a DataRepository instance initialized with an active database session.
+
+    Parameters
+    ----------
+    session : Session
+        Active database session injected via get_db dependency.
+
+    Returns
+    -------
+    DataRepository
+        Initialized data repository instance.
+    """
     return DataRepository(session)

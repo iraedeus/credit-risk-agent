@@ -14,4 +14,21 @@ def get_clients(
     limit: Annotated[int, Query(ge=0, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[int]:
+    """
+    Fetch a paginated list of client IDs sorted in ascending order.
+
+    Parameters
+    ----------
+    repo : DataRepository
+        Data repository instance injected via FastAPI dependency.
+    limit : int, default=20
+        Maximum number of client IDs to return (0 to 100).
+    offset : int, default=0
+        Number of client IDs to skip for pagination.
+
+    Returns
+    -------
+    list of int
+        List of client IDs matching the pagination parameters.
+    """
     return repo.get_clients(limit, offset)
