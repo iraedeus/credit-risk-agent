@@ -1,3 +1,5 @@
+"""API router providing endpoints for client data operations."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query

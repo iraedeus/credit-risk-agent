@@ -10,6 +10,8 @@ def client():
 
 
 def test_healthcheck(client: TestClient):
+    """Test that healthcheck endpoint returns HTTP 200 status code and status ok."""
+
     response = client.get("/api/v1/healthcheck")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
