@@ -2,8 +2,9 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
+from credit_risk_agent.schemas.data_schemas import ClientFullInfo
 from credit_risk_agent.services.data_service.dependencies import get_repo
 from credit_risk_agent.services.data_service.repository import DataRepository
 
@@ -34,3 +35,36 @@ def get_clients(
         List of client IDs matching the pagination parameters.
     """
     return repo.get_clients(limit, offset)
+
+
+@router.get("/{client_id}/")
+def get_client(
+    repo: Annotated[DataRepository, Depends(get_repo)],
+    client_id: Annotated[int, Path(gt=0)],
+) -> ClientFullInfo:
+    """
+    Retrieve full aggregated information for a specific client by ID.
+
+    Parameters
+    ----------
+    repo : DataRepository
+        Data repository instance injected via FastAPI dependency.
+    client_id : int
+        Unique positive identifier of the target client.
+
+    Returns
+    -------
+    ClientFullInfo
+        Aggregated client record containing profile, payment history, and financial metrics.
+
+    Raises
+    ------
+    HTTPException
+        HTTP 404 error if the client record or its payment history is not found.
+    """
+    client_info = repo.get_client_full(client_id)
+
+    if client_info is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    return client_info
