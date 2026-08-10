@@ -5,7 +5,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from credit_risk_agent.schemas.data_schemas import ClientFullInfo
+from credit_risk_agent.schemas.data_schemas import (
+    ClientFinancialMetrics,
+    ClientFullInfo,
+    ClientPaymentHistory,
+    ClientProfile,
+)
 from credit_risk_agent.services.data_service.dependencies import get_db
 from credit_risk_agent.services.data_service.main import app
 from credit_risk_agent.services.data_service.models import Base, ClientDB, PaymentHistoryDB
@@ -160,4 +165,99 @@ class TestGetClient:
         """Test that non-integer client ID triggers HTTP 422 validation error."""
 
         response = full_client.get("/api/v1/clients/abc")
+        assert response.status_code == 422
+
+
+class TestGetClientProfile:
+    """Integration test suite for the GET /api/v1/clients/{client_id}/profile endpoint."""
+
+    def test_get_client_profile_success(self, full_client: TestClient):
+        """Test that fetching profile for an existing client returns HTTP 200 OK and profile details."""
+
+        response = full_client.get("/api/v1/clients/1/profile")
+        assert response.status_code == 200
+
+        data = response.json()
+        client_profile = ClientProfile.model_validate(data)
+        assert client_profile.client_id == 1
+        assert client_profile.sex == 1
+
+    def test_get_client_profile_not_found(self, empty_client: TestClient):
+        """Test that fetching profile for a non-existent client returns HTTP 404 Not Found."""
+
+        response = empty_client.get("/api/v1/clients/1/profile")
+        assert response.status_code == 404
+
+    def test_get_client_profile_invalid_id(self, full_client: TestClient):
+        """Test that non-integer client ID triggers HTTP 422 validation error."""
+
+        response = full_client.get("/api/v1/clients/abc/profile")
+        assert response.status_code == 422
+
+
+class TestGetClientHistory:
+    """Integration test suite for the GET /api/v1/clients/{client_id}/history endpoint."""
+
+    def test_get_client_history_success(self, full_client: TestClient):
+        """Test that fetching payment history returns HTTP 200 OK and ordered monthly records."""
+
+        response = full_client.get("/api/v1/clients/1/history")
+        assert response.status_code == 200
+
+        history = [ClientPaymentHistory.model_validate(item) for item in response.json()]
+        assert history[0].client_id == 1
+        assert history[0].month == 1
+        assert history[0].bill_amt == 10000.0
+
+        assert history[1].client_id == 1
+        assert history[1].month == 2
+        assert history[1].pay_status == 1
+        assert history[0].client_id == 1
+
+    def test_get_client_history_not_found(self, empty_client: TestClient):
+        """Test that fetching payment history for a non-existent client returns HTTP 404 Not Found."""
+
+        response = empty_client.get("/api/v1/clients/1/history")
+        assert response.status_code == 404
+
+    def test_get_client_history_invalid_id(self, full_client: TestClient):
+        """Test that non-integer client ID triggers HTTP 422 validation error."""
+
+        response = full_client.get("/api/v1/clients/abc/history")
+        assert response.status_code == 422
+
+
+class TestGetClientMetrics:
+    """Integration test suite for the GET /api/v1/clients/{client_id}/metrics endpoint."""
+
+    def test_get_client_metrics_success(self, full_client: TestClient):
+        """Test that fetching financial metrics returns HTTP 200 OK and calculated metrics."""
+
+        response = full_client.get("/api/v1/clients/1/metrics")
+        assert response.status_code == 200
+
+        data = response.json()
+        metrics = ClientFinancialMetrics.model_validate(data)
+        assert metrics.client_id == 1
+        assert metrics.limit_bal == 100000.0
+        assert metrics.avg_bill == 10000.0
+        assert metrics.max_utilization == 10.0
+        assert metrics.max_delay_status == 1
+
+    def test_get_client_metrics_not_found(self, empty_client: TestClient):
+        """Test that fetching metrics for a non-existent client returns HTTP 404 Not Found."""
+
+        response = empty_client.get("/api/v1/clients/1/metrics")
+        assert response.status_code == 404
+
+    def test_get_client_metrics_empty_history(self, clients_empty_history_client: TestClient):
+        """Test that fetching metrics for a client without history returns HTTP 404 Not Found."""
+
+        response = clients_empty_history_client.get("/api/v1/clients/1/metrics")
+        assert response.status_code == 404
+
+    def test_get_client_metrics_invalid_id(self, full_client: TestClient):
+        """Test that non-integer client ID triggers HTTP 422 validation error."""
+
+        response = full_client.get("/api/v1/clients/abc/metrics")
         assert response.status_code == 422

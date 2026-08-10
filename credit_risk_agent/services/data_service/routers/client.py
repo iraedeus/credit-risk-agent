@@ -4,7 +4,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
-from credit_risk_agent.schemas.data_schemas import ClientFullInfo
+from credit_risk_agent.schemas.data_schemas import (
+    ClientFinancialMetrics,
+    ClientFullInfo,
+    ClientPaymentHistory,
+    ClientProfile,
+)
 from credit_risk_agent.services.data_service.dependencies import get_repo
 from credit_risk_agent.services.data_service.repository import DataRepository
 
@@ -68,3 +73,102 @@ def get_client(
         raise HTTPException(status_code=404, detail="Client not found")
 
     return client_info
+
+
+@router.get("/{client_id}/profile/")
+def get_client_profile(
+    repo: Annotated[DataRepository, Depends(get_repo)],
+    client_id: Annotated[int, Path(gt=0)],
+) -> ClientProfile:
+    """
+    Retrieve demographic and basic credit profile for a specific client by ID.
+
+    Parameters
+    ----------
+    repo : DataRepository
+        Data repository instance injected via FastAPI dependency.
+    client_id : int
+        Unique positive identifier of the target client.
+
+    Returns
+    -------
+    ClientProfile
+        Demographic profile containing limit balance, sex, education, marriage, and age.
+
+    Raises
+    ------
+    HTTPException
+        HTTP 404 error if the client profile is not found.
+    """
+    profile = repo.get_client_profile(client_id)
+
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    return profile
+
+
+@router.get("/{client_id}/history/")
+def get_client_history(
+    repo: Annotated[DataRepository, Depends(get_repo)],
+    client_id: Annotated[int, Path(gt=0)],
+) -> list[ClientPaymentHistory]:
+    """
+    Retrieve monthly payment history records for a specific client by ID.
+
+    Parameters
+    ----------
+    repo : DataRepository
+        Data repository instance injected via FastAPI dependency.
+    client_id : int
+        Unique positive identifier of the target client.
+
+    Returns
+    -------
+    list of ClientPaymentHistory
+        List of monthly payment history entries ordered by month.
+
+    Raises
+    ------
+    HTTPException
+        HTTP 404 error if the client payment history is not found.
+    """
+    history = repo.get_client_history(client_id)
+
+    if history is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    return history
+
+
+@router.get("/{client_id}/metrics/")
+def get_client_metrics(
+    repo: Annotated[DataRepository, Depends(get_repo)],
+    client_id: Annotated[int, Path(gt=0)],
+) -> ClientFinancialMetrics:
+    """
+    Calculate and retrieve financial metrics and delinquency statistics for a specific client by ID.
+
+    Parameters
+    ----------
+    repo : DataRepository
+        Data repository instance injected via FastAPI dependency.
+    client_id : int
+        Unique positive identifier of the target client.
+
+    Returns
+    -------
+    ClientFinancialMetrics
+        Calculated metrics including average bill, utilization rates, and delay counts.
+
+    Raises
+    ------
+    HTTPException
+        HTTP 404 error if financial metrics cannot be computed due to missing client history.
+    """
+    metrics = repo.get_client_financial(client_id)
+
+    if metrics is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    return metrics
