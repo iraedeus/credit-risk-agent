@@ -8,15 +8,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from credit_risk_agent.services.data_service.config import Settings
-from credit_risk_agent.services.data_service.models import Base
 from credit_risk_agent.services.data_service.repository import DataRepository
 
 settings = Settings()
 db_path = f"sqlite:///{settings.database_path}"
 
-engine = create_engine(db_path)
-Base.metadata.create_all(engine)
-
+engine = create_engine(db_path, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine)
 
 
