@@ -1,7 +1,10 @@
 """HTTP client for interacting with Credit Risk Data Microservice."""
 
+from functools import lru_cache
+
 import httpx
 
+from credit_risk_agent.config import DATA_SERVICE_URL
 from credit_risk_agent.services.data_service.exceptions import DataServiceHTTPError
 from credit_risk_agent.services.data_service.schemas import (
     ClientFinancialMetrics,
@@ -228,3 +231,8 @@ class DataServiceClient:
             raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
 
         return ClientFinancialMetrics.model_validate(response.json())
+
+
+@lru_cache
+def get_data_service_client() -> DataServiceClient:
+    return DataServiceClient(base_url=DATA_SERVICE_URL)

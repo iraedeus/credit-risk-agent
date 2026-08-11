@@ -3,7 +3,7 @@
 import httpx
 import pytest
 
-from credit_risk_agent.services.data_service.client import DataServiceClient
+from credit_risk_agent.services.data_service.client import DataServiceClient, get_data_service_client
 from credit_risk_agent.services.data_service.exceptions import DataServiceHTTPError
 from credit_risk_agent.services.data_service.schemas import (
     ClientFinancialMetrics,
@@ -11,6 +11,18 @@ from credit_risk_agent.services.data_service.schemas import (
     ClientPaymentHistory,
     ClientProfile,
 )
+
+
+class TestClientProvider:
+    def test_get_client_returns_instance(self):
+        client = get_data_service_client()
+        assert isinstance(client, DataServiceClient)
+
+    def test_get_client_returns_singleton(self):
+        client1 = get_data_service_client()
+        client2 = get_data_service_client()
+
+        assert client1 is client2
 
 
 class TestGetHealthcheck:
