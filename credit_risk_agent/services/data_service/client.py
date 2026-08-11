@@ -101,7 +101,22 @@ class DataServiceClient:
         DataServiceHTTPError
             If the Data Service returns an HTTP error status code other than 404.
         """
-        pass
+        response = self.client.get(f"/api/v1/clients/{client_id}")
+
+        if response.status_code == 404:
+            return None
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            try:
+                detail = response.json().get("detail", response.text)
+            except Exception:
+                detail = response.text
+
+            raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
+
+        return ClientFullInfo.model_validate(response.json())
 
     def get_client_profile(self, client_id: int) -> ClientProfile | None:
         """
@@ -122,7 +137,23 @@ class DataServiceClient:
         DataServiceHTTPError
             If the Data Service returns an HTTP error status code other than 404.
         """
-        pass
+
+        response = self.client.get(f"/api/v1/clients/{client_id}/profile")
+
+        if response.status_code == 404:
+            return None
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            try:
+                detail = response.json().get("detail", response.text)
+            except Exception:
+                detail = response.text
+
+            raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
+
+        return ClientProfile.model_validate(response.json())
 
     def get_client_history(self, client_id: int) -> list[ClientPaymentHistory] | None:
         """
@@ -143,7 +174,23 @@ class DataServiceClient:
         DataServiceHTTPError
             If the Data Service returns an HTTP error status code other than 404.
         """
-        pass
+
+        response = self.client.get(f"/api/v1/clients/{client_id}/history")
+
+        if response.status_code == 404:
+            return None
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            try:
+                detail = response.json().get("detail", response.text)
+            except Exception:
+                detail = response.text
+
+            raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
+
+        return [ClientPaymentHistory.model_validate(item) for item in response.json()]
 
     def get_client_metrics(self, client_id: int) -> ClientFinancialMetrics | None:
         """
@@ -164,4 +211,20 @@ class DataServiceClient:
         DataServiceHTTPError
             If the Data Service returns an HTTP error status code other than 404.
         """
-        pass
+
+        response = self.client.get(f"/api/v1/clients/{client_id}/metrics")
+
+        if response.status_code == 404:
+            return None
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            try:
+                detail = response.json().get("detail", response.text)
+            except Exception:
+                detail = response.text
+
+            raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
+
+        return ClientFinancialMetrics.model_validate(response.json())
