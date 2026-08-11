@@ -10,10 +10,9 @@ def get_client_financial_metrics(client_id: int) -> str:
     """
     Calculate and return key financial metrics for a specific test client.
 
-    Retrieves demographic and payment history data for the given client ID from
-    the SQLite database, then computes aggregated financial metrics including
-    credit limit utilization rates, repayment ratios, and delinquency statistics
-    over the 6-month historical period.
+    Retrieves aggregated financial metrics for the given client ID via the
+    DataServiceClient microservice, including credit limit utilization rates,
+    repayment ratios, and delinquency statistics over the 6-month historical period.
 
     Parameters
     ----------
