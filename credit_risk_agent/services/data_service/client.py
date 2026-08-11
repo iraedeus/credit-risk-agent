@@ -235,4 +235,12 @@ class DataServiceClient:
 
 @lru_cache
 def get_data_service_client() -> DataServiceClient:
+    """
+    Get a cached singleton instance of DataServiceClient.
+
+    Returns
+    -------
+    DataServiceClient
+        Configured client instance targeting the data microservice.
+    """
     return DataServiceClient(base_url=DATA_SERVICE_URL)

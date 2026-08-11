@@ -14,11 +14,15 @@ from credit_risk_agent.services.data_service.schemas import (
 
 
 class TestClientProvider:
-    def test_get_client_returns_instance(self):
+    """Test suite for get_data_service_client provider function."""
+
+    def test_get_client_returns_instance(self) -> None:
+        """Test provider returns an instance of DataServiceClient."""
         client = get_data_service_client()
         assert isinstance(client, DataServiceClient)
 
-    def test_get_client_returns_singleton(self):
+    def test_get_client_returns_singleton(self) -> None:
+        """Test provider returns cached singleton instance on repeated calls."""
         client1 = get_data_service_client()
         client2 = get_data_service_client()
 
