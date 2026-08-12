@@ -47,6 +47,6 @@ GIGACHAT_MODEL = os.getenv("GIGACHAT_MODEL", "GigaChat-2").strip()
 
 # Microservices settings
 
-_DATA_SERVICE_HOST = os.getenv("DATA_SERVICE_URL", "http://localhost")
-_DATA_SERVICE_PORT = os.getenv("DATA_SERVICE_PORT", "8000")
+_DATA_SERVICE_HOST = os.getenv("DATA_SERVICE_HOST", "http://localhost")
+_DATA_SERVICE_PORT = os.getenv("DATA_SERVICE_PORT", "8001")
 DATA_SERVICE_URL = f"{_DATA_SERVICE_HOST}:{_DATA_SERVICE_PORT}"
