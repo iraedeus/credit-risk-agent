@@ -35,8 +35,10 @@ def _get_risk_level(pd_val: float) -> str:
 
 def simulate_custom_scenario(client_id: int, params: dict[str, Any]) -> str:
     """
-    Simulate custom 'What-If' scenarios for a client by modifying specific features
-    and predicting the new credit default probability (PD).
+    Simulate custom 'What-If' scenarios for a client by modifying specific features.
+
+    Fetches full client details via DataServiceClient microservice, applies custom
+    feature modifications, and predicts the new credit default probability (PD).
 
     Parameters
     ----------

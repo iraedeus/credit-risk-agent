@@ -7,13 +7,20 @@ from credit_risk_agent.services.data_service.exceptions import DataServiceHTTPEr
 
 
 class TestSimulateCustomScenarioTool:
+    """Test suite for simulate_custom_scenario agent evaluation tool."""
+
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.client_full_info_to_df")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_model_from_mlflow")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_scaler_from_mlflow")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.CreditRiskPredictor")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.get_data_service_client")
     def test_simulate_custom_scenario_success(
-        self, provider, predictor, mock_load_model: MagicMock, mock_load_scaler: MagicMock, mock_to_df
+        self,
+        provider: MagicMock,
+        predictor: MagicMock,
+        mock_load_model: MagicMock,
+        mock_load_scaler: MagicMock,
+        mock_to_df: MagicMock,
     ) -> None:
         """Verify successful simulation output when updating client features."""
         mock_df = pd.DataFrame({"client_id": [15], "limit_bal": [50000], "pay_0": [2]})
@@ -55,8 +62,8 @@ class TestSimulateCustomScenarioTool:
         assert "Ошибка: Ни один из переданных параметров" in result
 
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.get_data_service_client")
-    def test_simulate_custom_scenario_client_not_found(self, provider) -> None:
-        """Verify error message when specified client_id is not in database."""
+    def test_simulate_custom_scenario_client_not_found(self, provider: MagicMock) -> None:
+        """Verify error message when specified client_id is not in DataServiceClient."""
         mock_client = MagicMock()
         mock_client.get_client.return_value = None
         provider.return_value = mock_client
@@ -66,8 +73,8 @@ class TestSimulateCustomScenarioTool:
         assert result == "Клиент с client_id = 999 не был найден в базе данных."
 
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.get_data_service_client")
-    def test_simulate_custom_scenario_service_error(self, provider) -> None:
-        """Verify error message when all parameters in params are unknown columns."""
+    def test_simulate_custom_scenario_service_error(self, provider: MagicMock) -> None:
+        """Verify error message when DataServiceClient raises an HTTP error."""
         mock_client = MagicMock()
         mock_client.get_client.side_effect = DataServiceHTTPError(500, "Internal Service Error")
         provider.return_value = mock_client
