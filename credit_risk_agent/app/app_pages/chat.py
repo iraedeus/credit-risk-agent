@@ -16,6 +16,7 @@ from credit_risk_agent.agent.events import (
     ThoughtEvent,
     ToolCallEvent,
 )
+from credit_risk_agent.config import GIGACHAT_MODEL
 
 st.title("AI-агент")
 
@@ -37,7 +38,7 @@ def get_agent() -> CreditRiskAgent | None:
     if not credentials or credentials == "your_gigachat_authorization_data":
         return None
 
-    client = GigaChat(credentials=credentials, verify_ssl_certs=False)
+    client = GigaChat(credentials=credentials, model=GIGACHAT_MODEL, verify_ssl_certs=False)
     return CreditRiskAgent(client=client, max_iterations=15)
 
 
