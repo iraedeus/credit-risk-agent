@@ -101,6 +101,9 @@ def prepare_dataset(
     static_features = preprocess_static(df_static).values
 
     # 3. Extract targets (one label per client)
-    labels = df.groupby(id_col)[target_col].first().values
+    if target_col in df.columns:
+        labels = df.groupby(id_col)[target_col].first().values
+    else:
+        labels = np.zeros(len(df_static), dtype=np.float32)
 
     return CreditDataset(features_3d, static_features, labels)
