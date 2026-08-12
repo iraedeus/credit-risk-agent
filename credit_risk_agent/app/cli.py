@@ -11,7 +11,7 @@ from gigachat import GigaChat
 
 from credit_risk_agent.agent.agent import CreditRiskAgent
 from credit_risk_agent.agent.tools import get_client_financial_metrics, run_model
-from credit_risk_agent.config import ARTIFACTS_PATH
+from credit_risk_agent.config import ARTIFACTS_PATH, GIGACHAT_MODEL
 
 
 def get_client_info(client_id: int) -> None:
@@ -45,7 +45,7 @@ def prompt_agent(prompt: str, verbose: bool = False) -> None:
         print("Добавьте пожалуйста ваш API-ключ для GigaChat в файл .env")
         return
 
-    with GigaChat(credentials=credentials, verify_ssl_certs=False) as client:
+    with GigaChat(credentials=credentials, model=GIGACHAT_MODEL, verify_ssl_certs=False) as client:
         agent = CreditRiskAgent(client)
         response = agent.run(user_prompt=prompt, verbose=verbose)
         print("\n" + response)
@@ -67,7 +67,7 @@ def chat_agent(verbose: bool = False) -> None:
         print("Добавьте пожалуйста ваш API-ключ для GigaChat в файл .env")
         return
 
-    with GigaChat(credentials=credentials, verify_ssl_certs=False) as client:
+    with GigaChat(credentials=credentials, model=GIGACHAT_MODEL, verify_ssl_certs=False) as client:
         agent = CreditRiskAgent(client, max_iterations=25)
         while True:
             user_input = input("Вы > ")

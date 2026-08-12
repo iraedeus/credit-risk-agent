@@ -16,7 +16,7 @@ from credit_risk_agent.services.data_service.schemas import (
 router = APIRouter(prefix="/api/v1/clients", tags=["Clients"])
 
 
-@router.get("/")
+@router.get("")
 def get_clients(
     repo: Annotated[DataRepository, Depends(get_repo)],
     limit: Annotated[int, Query(ge=0, le=100)] = 20,
@@ -42,7 +42,7 @@ def get_clients(
     return repo.get_clients(limit, offset)
 
 
-@router.get("/{client_id}/")
+@router.get("/{client_id}")
 def get_client(
     repo: Annotated[DataRepository, Depends(get_repo)],
     client_id: Annotated[int, Path(gt=0)],
@@ -75,7 +75,7 @@ def get_client(
     return client_info
 
 
-@router.get("/{client_id}/profile/")
+@router.get("/{client_id}/profile")
 def get_client_profile(
     repo: Annotated[DataRepository, Depends(get_repo)],
     client_id: Annotated[int, Path(gt=0)],
@@ -108,7 +108,7 @@ def get_client_profile(
     return profile
 
 
-@router.get("/{client_id}/history/")
+@router.get("/{client_id}/history")
 def get_client_history(
     repo: Annotated[DataRepository, Depends(get_repo)],
     client_id: Annotated[int, Path(gt=0)],
@@ -141,7 +141,7 @@ def get_client_history(
     return history
 
 
-@router.get("/{client_id}/metrics/")
+@router.get("/{client_id}/metrics")
 def get_client_metrics(
     repo: Annotated[DataRepository, Depends(get_repo)],
     client_id: Annotated[int, Path(gt=0)],
