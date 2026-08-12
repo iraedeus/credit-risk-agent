@@ -1,107 +1,55 @@
 from unittest.mock import MagicMock, patch
 
-import pandas as pd
-import torch
-
 from credit_risk_agent.agent import run_model
+from credit_risk_agent.services.data_service.exceptions import DataServiceHTTPError
 
 
 class TestRunModelTool:
-    @patch("credit_risk_agent.model.predictor.prepare_dataset")
+    """Test suite for run_model agent evaluation tool."""
+
     @patch("credit_risk_agent.agent.tools.run_model.load_scaler_from_mlflow")
-    @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
     @patch("credit_risk_agent.agent.tools.run_model.load_model_from_mlflow")
+    @patch("credit_risk_agent.agent.tools.run_model.CreditRiskPredictor")
+    @patch("credit_risk_agent.agent.tools.run_model.get_data_service_client")
     def test_run_model_success(
         self,
+        provider: MagicMock,
+        predictor: MagicMock,
         mock_load_model: MagicMock,
-        mock_load_data: MagicMock,
-        mock_load_scaler: MagicMock,
-        mock_prepare_dataset: MagicMock,
-    ) -> None:
-        """Verify successful scoring for an existing client ID."""
-        # 1. Arrange
-        client_id = 15
-        mock_df = pd.DataFrame({"client_id": [15, 20]})
-        mock_load_data.return_value = mock_df
-        mock_scaler_instance = MagicMock()
-        mock_scaler_instance.transform.return_value = mock_df
-        mock_load_scaler.return_value = mock_scaler_instance
-
-        dummy_seq = torch.zeros((6, 3))
-        dummy_static = torch.zeros((14,))
-        mock_prepare_dataset.return_value = [(dummy_seq, dummy_static)]
-
-        mock_model_instance = MagicMock()
-        mock_model_instance.return_value = torch.tensor([[0.0]])
-        mock_load_model.return_value = mock_model_instance
-
-        # 2. Act
-        result = run_model(client_id)
-
-        # 3. Assert
-        assert result == "Модель на клиенте с id=15 выдала результат равный 0.5000."
-        mock_prepare_dataset.assert_called_once()
-        mock_model_instance.assert_called_once()
-
-    @patch("credit_risk_agent.agent.tools.run_model.load_scaler_from_mlflow")
-    @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
-    @patch("credit_risk_agent.agent.tools.run_model.load_model_from_mlflow")
-    def test_run_model_client_not_found(
-        self,
-        mock_load_model: MagicMock,
-        mock_load_data: MagicMock,
         mock_load_scaler: MagicMock,
     ) -> None:
-        """Verify tool response when client_id is not found in database."""
-        # 1. Arrange
-        client_id = 999999
-        mock_df = pd.DataFrame({"client_id": [1, 2, 3]})
-        mock_load_data.return_value = mock_df
-        mock_scaler_instance = MagicMock()
-        mock_scaler_instance.transform.return_value = mock_df
-        mock_load_scaler.return_value = mock_scaler_instance
+        """Verify successful scoring for an existing client ID via DataServiceClient."""
 
-        mock_model_instance = MagicMock()
-        mock_load_model.return_value = mock_model_instance
+        mock_full_info = MagicMock()
+        mock_client = MagicMock()
+        mock_client.get_client.return_value = mock_full_info
 
-        # 2. Act
-        result = run_model(client_id)
+        provider.return_value = mock_client
+        predictor.return_value.predict_pd.return_value = 0.5
 
-        # 3. Assert
-        assert result == f"Клиент с id={client_id} не был найден в базе."
+        result = run_model(1)
+        assert result == "Модель на клиенте с id=1 выдала результат равный 0.5000."
 
-    @patch("credit_risk_agent.model.predictor.prepare_dataset")
-    @patch("credit_risk_agent.agent.tools.run_model.load_scaler_from_mlflow")
-    @patch("credit_risk_agent.agent.tools.run_model.load_and_preprocess_from_db")
-    @patch("credit_risk_agent.agent.tools.run_model.load_model_from_mlflow")
-    def test_run_model_formatting_precision(
-        self,
-        mock_load_model: MagicMock,
-        mock_load_data: MagicMock,
-        mock_load_scaler: MagicMock,
-        mock_prepare_dataset: MagicMock,
-    ) -> None:
-        """Verify model prediction score formatting precision (4 decimal places)."""
+    @patch("credit_risk_agent.agent.tools.run_model.get_data_service_client")
+    def test_run_model_client_not_found(self, provider: MagicMock) -> None:
+        """Verify tool response when client_id is not found in DataServiceClient."""
 
-        # 1. Arrange
-        client_id = 42
-        mock_df = pd.DataFrame({"client_id": [42]})
-        mock_load_data.return_value = mock_df
-        mock_scaler_instance = MagicMock()
-        mock_scaler_instance.transform.return_value = mock_df
-        mock_load_scaler.return_value = mock_scaler_instance
+        mock_client = MagicMock()
+        mock_client.get_client.return_value = None
+        provider.return_value = mock_client
 
-        dummy_seq = torch.zeros((6, 3))
-        dummy_static = torch.zeros((14,))
-        mock_prepare_dataset.return_value = [(dummy_seq, dummy_static)]
+        result = run_model(999)
 
-        mock_model_instance = MagicMock()
-        # Logit 2.1972246 -> sigmoid = 0.9000
-        mock_model_instance.return_value = torch.tensor([[2.1972246]])
-        mock_load_model.return_value = mock_model_instance
+        assert result == "Клиент с client_id = 999 не был найден в базе данных."
 
-        # 2. Act
-        result = run_model(client_id)
+    @patch("credit_risk_agent.agent.tools.run_model.get_data_service_client")
+    def test_run_model_service_error(self, provider: MagicMock) -> None:
+        """Verify error handling when DataServiceClient raises HTTP error."""
 
-        # 3. Assert
-        assert result == "Модель на клиенте с id=42 выдала результат равный 0.9000."
+        mock_client = MagicMock()
+        mock_client.get_client.side_effect = DataServiceHTTPError(500, "Internal Service Error")
+        provider.return_value = mock_client
+
+        result = run_model(1)
+
+        assert "Ошибка Data Service:" in result
