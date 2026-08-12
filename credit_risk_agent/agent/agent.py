@@ -32,9 +32,6 @@ DEFAULT_SYSTEM_PROMPT = """
   Repayment Rate, максимальный статус просрочки и количество месяцев просрочек.
 - `simulate_custom_scenario(client_id, params)` — прогоняет симуляцию "Что-Если" с изменениями
   параметров клиента (например, `{"limit_bal": 100000, "pay_0": 0}`) и возвращает разницу PD (Baseline vs Simulation).
-- `sql_query(query)` — позволяет выполнять произвольные SELECT-запросы к БД (таблицы `clients`
-  и `payment_history`). ВАЖНО: колонка `default` в таблице `clients` — зарезервированное слово SQLite,
-  её нужно оборачивать в кавычки: `"default"`.
 
 ### 2. АЛГОРИТМ ПРОВЕДЕНИЯ АНАЛИЗА
 1. **Сбор базовых данных:** Всегда вызывай `run_model` и `get_client_financial_metrics` для целевого `client_id`.

@@ -5,7 +5,12 @@ Defines filesystem paths, database column mappings, hyperparameter defaults,
 and MLflow Model Registry alias constants.
 """
 
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()  # Загружает переменные из .env в os.environ
 
 __ROOT__ = Path(__file__).parent.parent
 DATA_PATH = __ROOT__ / "data"
@@ -26,6 +31,7 @@ SCALER_PATH = ARTIFACTS_PATH / "scaler.json"
 MODEL_SAVE_PATH = ARTIFACTS_PATH / "model.pt"
 
 # Model Hyperparameters
+
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 EPOCHS = 25
@@ -34,3 +40,13 @@ DROPOUT_PROB = 0.28
 
 BEST_MODEL_NAME = "CreditRiskModel"
 BEST_MODEL_ALIAS = "champion"
+
+# Gigachat settings
+
+GIGACHAT_MODEL = os.getenv("GIGACHAT_MODEL", "GigaChat-2").strip()
+
+# Microservices settings
+
+_DATA_SERVICE_HOST = os.getenv("DATA_SERVICE_URL", "http://localhost")
+_DATA_SERVICE_PORT = os.getenv("DATA_SERVICE_PORT", "8000")
+DATA_SERVICE_URL = f"{_DATA_SERVICE_HOST}:{_DATA_SERVICE_PORT}"

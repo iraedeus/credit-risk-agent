@@ -2,15 +2,17 @@ import pandas as pd
 import pytest
 
 from credit_risk_agent.agent.tools import run_model
-from credit_risk_agent.config import DATA_PATH, TEST_DATABASE_PATH
+from credit_risk_agent.config import DATA_PATH
 from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
+from credit_risk_agent.services.data_service.client import get_data_service_client
 
 
 class TestRunModelToolIntegration:
     def test_run_model_integration_smoke(self) -> None:
         """Smoke test for run_model tool using real model weights and dataset artifacts."""
-        if not TEST_DATABASE_PATH.exists():
-            pytest.skip("Test database missing, skipping integration test.")
+
+        if not get_data_service_client().get_healthcheck():
+            pytest.skip("Data Service недоступен по DATA_SERVICE_URL, пропускаем тест.")
 
         try:
             load_model_from_mlflow()

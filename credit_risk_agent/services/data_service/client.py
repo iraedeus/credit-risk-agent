@@ -1,7 +1,10 @@
 """HTTP client for interacting with Credit Risk Data Microservice."""
 
+from functools import lru_cache
+
 import httpx
 
+from credit_risk_agent.config import DATA_SERVICE_URL
 from credit_risk_agent.services.data_service.exceptions import DataServiceHTTPError
 from credit_risk_agent.services.data_service.schemas import (
     ClientFinancialMetrics,
@@ -32,6 +35,18 @@ class DataServiceClient:
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self.client = httpx.Client(base_url=base_url, timeout=timeout, transport=transport)
+
+    @staticmethod
+    def _raise_for_status(response: httpx.Response) -> None:
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            try:
+                detail = response.json().get("detail", response.text)
+            except Exception:
+                detail = response.text
+
+            raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
 
     def get_healthcheck(self) -> bool:
         """
@@ -70,15 +85,7 @@ class DataServiceClient:
             If the Data Service returns an HTTP status code 4xx or 5xx.
         """
         response = self.client.get("/api/v1/clients", params={"limit": limit, "offset": offset})
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            try:
-                detail = response.json().get("detail", response.text)
-            except Exception:
-                detail = response.text
-
-            raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
+        self._raise_for_status(response)
 
         return response.json()
 
@@ -106,15 +113,7 @@ class DataServiceClient:
         if response.status_code == 404:
             return None
 
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            try:
-                detail = response.json().get("detail", response.text)
-            except Exception:
-                detail = response.text
-
-            raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
+        self._raise_for_status(response)
 
         return ClientFullInfo.model_validate(response.json())
 
@@ -143,15 +142,7 @@ class DataServiceClient:
         if response.status_code == 404:
             return None
 
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            try:
-                detail = response.json().get("detail", response.text)
-            except Exception:
-                detail = response.text
-
-            raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
+        self._raise_for_status(response)
 
         return ClientProfile.model_validate(response.json())
 
@@ -180,15 +171,7 @@ class DataServiceClient:
         if response.status_code == 404:
             return None
 
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            try:
-                detail = response.json().get("detail", response.text)
-            except Exception:
-                detail = response.text
-
-            raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
+        self._raise_for_status(response)
 
         return [ClientPaymentHistory.model_validate(item) for item in response.json()]
 
@@ -217,14 +200,19 @@ class DataServiceClient:
         if response.status_code == 404:
             return None
 
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            try:
-                detail = response.json().get("detail", response.text)
-            except Exception:
-                detail = response.text
-
-            raise DataServiceHTTPError(status_code=response.status_code, message=detail) from exc
+        self._raise_for_status(response)
 
         return ClientFinancialMetrics.model_validate(response.json())
+
+
+@lru_cache
+def get_data_service_client() -> DataServiceClient:
+    """
+    Get a cached singleton instance of DataServiceClient.
+
+    Returns
+    -------
+    DataServiceClient
+        Configured client instance targeting the data microservice.
+    """
+    return DataServiceClient(base_url=DATA_SERVICE_URL)
