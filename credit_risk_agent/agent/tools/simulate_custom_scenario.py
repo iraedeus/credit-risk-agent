@@ -5,7 +5,8 @@ What-If scenario simulation tool for evaluating modified client feature hypothes
 from typing import Any
 
 from credit_risk_agent.agent.tools.run_model import client_full_info_to_df
-from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
+from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
+from credit_risk_agent.model.loader import load_model_from_registry, load_scaler_from_registry
 from credit_risk_agent.model.predictor import CreditRiskPredictor
 from credit_risk_agent.services.data_service.client import get_data_service_client
 from credit_risk_agent.services.data_service.exceptions import DataServiceHTTPError
@@ -80,8 +81,8 @@ def simulate_custom_scenario(client_id: int, params: dict[str, Any]) -> str:
                 f"не содержится в признаках клиентов. Проверьте правильность имён полей."
             )
 
-        scaler = load_scaler_from_mlflow()
-        model = load_model_from_mlflow()
+        scaler = load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
+        model = load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
 
         predictor = CreditRiskPredictor(model, scaler)
 

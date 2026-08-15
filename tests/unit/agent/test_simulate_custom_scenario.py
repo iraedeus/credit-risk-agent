@@ -10,8 +10,8 @@ class TestSimulateCustomScenarioTool:
     """Test suite for simulate_custom_scenario agent evaluation tool."""
 
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.client_full_info_to_df")
-    @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_model_from_mlflow")
-    @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_scaler_from_mlflow")
+    @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_model_from_registry")
+    @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.load_scaler_from_registry")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.CreditRiskPredictor")
     @patch("credit_risk_agent.agent.tools.simulate_custom_scenario.get_data_service_client")
     def test_simulate_custom_scenario_success(

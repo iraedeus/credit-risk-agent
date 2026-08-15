@@ -7,8 +7,8 @@ from credit_risk_agent.services.data_service.exceptions import DataServiceHTTPEr
 class TestRunModelTool:
     """Test suite for run_model agent evaluation tool."""
 
-    @patch("credit_risk_agent.agent.tools.run_model.load_scaler_from_mlflow")
-    @patch("credit_risk_agent.agent.tools.run_model.load_model_from_mlflow")
+    @patch("credit_risk_agent.agent.tools.run_model.load_scaler_from_registry")
+    @patch("credit_risk_agent.agent.tools.run_model.load_model_from_registry")
     @patch("credit_risk_agent.agent.tools.run_model.CreditRiskPredictor")
     @patch("credit_risk_agent.agent.tools.run_model.get_data_service_client")
     def test_run_model_success(

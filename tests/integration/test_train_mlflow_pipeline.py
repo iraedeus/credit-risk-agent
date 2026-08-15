@@ -11,7 +11,7 @@ import scripts.train as train_module
 from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
 from credit_risk_agent.data import StandardScaler
 from credit_risk_agent.model import CreditDefaultModel, prepare_dataset
-from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
+from credit_risk_agent.model.loader import load_model_from_registry, load_scaler_from_registry
 
 
 class TestMLflowPipeline:
@@ -81,10 +81,10 @@ class TestMLflowPipeline:
 
         # --- Step 1: Verify clean state error handling ---
         with pytest.raises(RuntimeError, match="Чемпионская модель еще не назначена"):
-            load_scaler_from_mlflow(run_id=None)
+            load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
 
-        with pytest.raises(RuntimeError, match="Не удалось загрузить чемпионскую модель"):
-            load_model_from_mlflow(run_id=None)
+        with pytest.raises(RuntimeError, match="Чемпионская модель еще не назначена"):
+            load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
 
         # Prepare datasets for training passes
         download_module.create_train_test_db()
@@ -114,10 +114,10 @@ class TestMLflowPipeline:
         assert str(champion_v1.version) == "1"
 
         # --- Step 3: Verify Inference loads Champion v1 ---
-        loaded_scaler = load_scaler_from_mlflow(run_id=None)
+        loaded_scaler = load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
         assert loaded_scaler is not None
 
-        loaded_model = load_model_from_mlflow(run_id=None)
+        loaded_model = load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
         assert isinstance(loaded_model, CreditDefaultModel)
 
         # --- Step 4: 2nd Training Pass with Worse Loss (Champion v1 should be kept) ---
@@ -145,5 +145,5 @@ class TestMLflowPipeline:
         assert str(champion_v2.version) == "2"
 
         # --- Step 6: Verify Inference loads Champion v2 ---
-        loaded_model_v2 = load_model_from_mlflow(run_id=None)
+        loaded_model_v2 = load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
         assert isinstance(loaded_model_v2, CreditDefaultModel)

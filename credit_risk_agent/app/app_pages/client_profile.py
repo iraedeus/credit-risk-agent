@@ -6,7 +6,8 @@ import pandas as pd
 import streamlit as st
 
 from credit_risk_agent.agent.tools.run_model import client_full_info_to_df
-from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
+from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
+from credit_risk_agent.model.loader import load_model_from_registry, load_scaler_from_registry
 from credit_risk_agent.model.predictor import CreditRiskPredictor
 from credit_risk_agent.services.data_service.client import get_data_service_client
 from credit_risk_agent.services.data_service.schemas import ClientFullInfo
@@ -59,8 +60,8 @@ def get_credit_risk_predictor() -> CreditRiskPredictor:
     CreditRiskPredictor
         Cached predictor instance.
     """
-    model = load_model_from_mlflow()
-    scaler = load_scaler_from_mlflow()
+    model = load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
+    scaler = load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
     return CreditRiskPredictor(model, scaler)
 
 
