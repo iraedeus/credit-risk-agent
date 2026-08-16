@@ -44,7 +44,8 @@ class DataServiceClient:
             try:
                 detail = response.json().get("detail", response.text)
                 if isinstance(detail, list):
-                    detail = detail[0]["msg"]
+                    errors = [error["msg"] for error in detail]
+                    detail = "; ".join(errors)
             except Exception:
                 detail = response.text
 
