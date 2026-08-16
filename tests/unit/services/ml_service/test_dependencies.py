@@ -5,6 +5,12 @@ from credit_risk_agent.services.ml_service.schemas import ClientProfileHistory
 
 
 def test_client_profile_history_to_df():
+    """
+    Test that client_profile_history_to_df builds the expected feature DataFrame.
+
+    Verifies that the resulting DataFrame replicates the client profile across
+    six rows, one per payment history record, with all expected columns and values.
+    """
     profile = ClientProfile(
         client_id=1,
         limit_bal=2000,
@@ -29,9 +35,14 @@ def test_client_profile_history_to_df():
 
     assert len(df) == len(history)
 
+    assert (df["client_id"] == 1).all()
     assert (df["sex"] == 1).all()
+    assert (df["education"] == 2).all()
+    assert (df["marriage"] == 1).all()
+    assert (df["age"] == 20).all()
     assert (df["limit_bal"] == 2000).all()
 
     assert df["month"].tolist() == [1, 2, 3, 4, 5, 6]
     assert df["pay_status"].tolist() == [1, 0, 0, 0, 0, 0]
     assert df["bill_amt"].tolist() == [100, 100, 100, 100, 100, 100]
+    assert df["pay_amt"].tolist() == [200, 300, 300, 300, 300, 300]

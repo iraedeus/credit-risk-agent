@@ -3,33 +3,9 @@ import json
 import httpx
 import pytest
 
-from credit_risk_agent.schemas.client_schemas import ClientPaymentHistory, ClientProfile
-from credit_risk_agent.schemas.enums import Education, Marriage, Sex
 from credit_risk_agent.services.ml_service.client import MLServiceClient, get_ml_service_client
 from credit_risk_agent.services.ml_service.exceptions import MLServiceHTTPError
-from credit_risk_agent.services.ml_service.schemas import ClientProfileHistory, PredictionResponse
-
-
-@pytest.fixture
-def profile_history():
-    return ClientProfileHistory(
-        profile=ClientProfile(
-            client_id=1,
-            limit_bal=300000.0,
-            age=35,
-            sex=Sex.MALE,
-            education=Education.UNIVERSITY,
-            marriage=Marriage.MARRIED,
-        ),
-        history=[
-            ClientPaymentHistory(client_id=1, month=1, pay_status=-1, bill_amt=55000.0, pay_amt=18000.0),
-            ClientPaymentHistory(client_id=1, month=2, pay_status=-1, bill_amt=55000.0, pay_amt=18000.0),
-            ClientPaymentHistory(client_id=1, month=3, pay_status=-1, bill_amt=55000.0, pay_amt=18000.0),
-            ClientPaymentHistory(client_id=1, month=4, pay_status=-1, bill_amt=55000.0, pay_amt=18000.0),
-            ClientPaymentHistory(client_id=1, month=5, pay_status=-1, bill_amt=55000.0, pay_amt=18000.0),
-            ClientPaymentHistory(client_id=1, month=6, pay_status=-1, bill_amt=55000.0, pay_amt=18000.0),
-        ],
-    )
+from credit_risk_agent.services.ml_service.schemas import PredictionResponse
 
 
 class TestClientProvider:

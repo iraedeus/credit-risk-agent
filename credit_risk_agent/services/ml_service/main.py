@@ -1,5 +1,6 @@
 """FastAPI main application entry point and service configuration."""
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -11,6 +12,8 @@ from credit_risk_agent.model.predictor import CreditRiskPredictor
 from credit_risk_agent.services.ml_service.config import Settings
 from credit_risk_agent.services.ml_service.dependencies import client_profile_history_to_df
 from credit_risk_agent.services.ml_service.schemas import ClientProfileHistory, PredictionResponse
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -39,8 +42,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         scaler = load_scaler_from_registry(settings.model_name, settings.model_alias)
         model = load_model_from_registry(settings.model_name, settings.model_alias)
         app.state.predictor = CreditRiskPredictor(model, scaler)
+        logger.info(
+            "Model loaded successfully (model_name=%s, model_alias=%s)",
+            settings.model_name,
+            settings.model_alias,
+        )
     except Exception:
-        pass
+        logger.exception(
+            "Failed to load model (model_name=%s, model_alias=%s)",
+            settings.model_name,
+            settings.model_alias,
+        )
 
     yield
 
@@ -66,7 +78,27 @@ def healthcheck(request: Request) -> dict[str, str]:
 
 
 @app.post("/api/v1/predict")
-def predict(request: Request, profile_history: ClientProfileHistory) -> PredictionResponse:
+def predict(profile_history: ClientProfileHistory, request: Request) -> PredictionResponse:
+    """
+    Compute the credit default probability for a client profile history.
+
+    Parameters
+    ----------
+    profile_history : ClientProfileHistory
+        Client demographic profile and monthly payment history.
+    request : Request
+        Incoming HTTP request, used to access the predictor on application state.
+
+    Returns
+    -------
+    PredictionResponse
+        Predicted probability of default in range [0.0, 1.0].
+
+    Raises
+    ------
+    HTTPException
+        With status code 503 if the predictor is not available.
+    """
     if not hasattr(request.app.state, "predictor"):
         raise HTTPException(status_code=503)
 
