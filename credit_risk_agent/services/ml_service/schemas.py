@@ -43,6 +43,21 @@ class ClientProfileHistory(BaseModel):
 
         return self
 
+    @model_validator(mode="after")
+    def validate_history_len(self) -> "ClientProfileHistory":
+        if len(self.history) != 6:
+            raise ValueError("Invalid length of the client history. Should be equal to 6.")
+        return self
+
+    @model_validator(mode="after")
+    def validate_unique_months(self) -> "ClientProfileHistory":
+        months = []
+        for month in self.history:
+            months.append(month.month)
+        if len(months) != len(set(months)):
+            raise ValueError("Months in history must be unique.")
+        return self
+
 
 class PredictionResponse(BaseModel):
     """

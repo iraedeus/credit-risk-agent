@@ -17,6 +17,10 @@ def test_client_profile_history_to_df():
     history = [
         ClientPaymentHistory(client_id=1, month=1, pay_status=1, bill_amt=100, pay_amt=200),
         ClientPaymentHistory(client_id=1, month=2, pay_status=0, bill_amt=100, pay_amt=300),
+        ClientPaymentHistory(client_id=1, month=3, pay_status=0, bill_amt=100, pay_amt=300),
+        ClientPaymentHistory(client_id=1, month=4, pay_status=0, bill_amt=100, pay_amt=300),
+        ClientPaymentHistory(client_id=1, month=5, pay_status=0, bill_amt=100, pay_amt=300),
+        ClientPaymentHistory(client_id=1, month=6, pay_status=0, bill_amt=100, pay_amt=300),
     ]
 
     profile_history = ClientProfileHistory(profile=profile, history=history)
@@ -28,6 +32,6 @@ def test_client_profile_history_to_df():
     assert (df["sex"] == 1).all()
     assert (df["limit_bal"] == 2000).all()
 
-    assert df["month"].tolist() == [1, 2]
-    assert df["pay_status"].tolist() == [1, 0]
-    assert df["bill_amt"].tolist() == [100, 100]
+    assert df["month"].tolist() == [1, 2, 3, 4, 5, 6]
+    assert df["pay_status"].tolist() == [1, 0, 0, 0, 0, 0]
+    assert df["bill_amt"].tolist() == [100, 100, 100, 100, 100, 100]

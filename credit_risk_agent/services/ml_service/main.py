@@ -4,12 +4,13 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import mlflow
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request
 
 from credit_risk_agent.model.loader import load_model_from_registry, load_scaler_from_registry
 from credit_risk_agent.model.predictor import CreditRiskPredictor
 from credit_risk_agent.services.ml_service.config import Settings
+from credit_risk_agent.services.ml_service.dependencies import client_profile_history_to_df
+from credit_risk_agent.services.ml_service.schemas import ClientProfileHistory, PredictionResponse
 
 
 @asynccontextmanager
@@ -48,7 +49,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/api/v1/healthcheck")
-def healthcheck(request: Request) -> dict[str, str] | JSONResponse:
+def healthcheck(request: Request) -> dict[str, str]:
     """
     Check service health status.
 
@@ -59,6 +60,17 @@ def healthcheck(request: Request) -> dict[str, str] | JSONResponse:
     """
 
     if not hasattr(request.app.state, "predictor"):
-        return JSONResponse(status_code=503, content={"status": "error"})
+        raise HTTPException(status_code=503)
 
     return {"status": "ok"}
+
+
+@app.post("/api/v1/predict")
+def predict(request: Request, profile_history: ClientProfileHistory) -> PredictionResponse:
+    if not hasattr(request.app.state, "predictor"):
+        raise HTTPException(status_code=503)
+
+    predictor = request.app.state.predictor
+    profile_history_df = client_profile_history_to_df(profile_history)
+    default_probability = predictor.predict_pd(profile_history_df)
+    return PredictionResponse(default_probability=default_probability)
