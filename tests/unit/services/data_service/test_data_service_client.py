@@ -390,7 +390,7 @@ class TestGetClientMetrics:
             client.get_client_metrics(-1)
 
         assert exc.value.status_code == 422
-        assert exc.value.message != ""
+        assert exc.value.message == "Internal error"
 
     def test_get_client_metrics_server_error(self):
         def handler(request: httpx.Request) -> httpx.Response:
@@ -403,7 +403,7 @@ class TestGetClientMetrics:
             client.get_client_metrics(1)
 
         assert exc.value.status_code == 500
-        assert exc.value.message != ""
+        assert exc.value.message == "Internal error"
 
     def test_get_client_metrics_connection_error(self):
         def handler(request: httpx.Request) -> httpx.Response:

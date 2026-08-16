@@ -43,6 +43,8 @@ class DataServiceClient:
         except httpx.HTTPStatusError as exc:
             try:
                 detail = response.json().get("detail", response.text)
+                if isinstance(detail, list):
+                    detail = detail[0]["msg"]
             except Exception:
                 detail = response.text
 
