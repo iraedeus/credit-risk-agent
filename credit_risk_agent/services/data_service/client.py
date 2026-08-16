@@ -30,7 +30,7 @@ class DataServiceClient:
 
     def __init__(
         self,
-        base_url: str = "http://localhost:8000",
+        base_url: str = "http://localhost:8001",
         timeout: float = 5.0,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
