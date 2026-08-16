@@ -2,8 +2,8 @@ import pandas as pd
 import pytest
 
 from credit_risk_agent.agent.tools import run_model
-from credit_risk_agent.config import DATA_PATH
-from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
+from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME, DATA_PATH
+from credit_risk_agent.model.loader import load_model_from_registry, load_scaler_from_registry
 from credit_risk_agent.services.data_service.client import get_data_service_client
 
 
@@ -15,8 +15,8 @@ class TestRunModelToolIntegration:
             pytest.skip("Data Service недоступен по DATA_SERVICE_URL, пропускаем тест.")
 
         try:
-            load_model_from_mlflow()
-            load_scaler_from_mlflow()
+            load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
+            load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
         except Exception:
             pytest.skip("Champion model or scaler not found in MLflow, skipping integration test.")
 

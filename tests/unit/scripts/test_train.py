@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 import torch
 
+from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
 from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from scripts.train import (
     check_model_quality,
@@ -196,9 +197,9 @@ class TestMainCLI:
 
     @patch("scripts.train.TEST_DATABASE_PATH")
     @patch("scripts.train.check_model_quality")
-    @patch("scripts.train.load_model_from_mlflow")
+    @patch("scripts.train.load_model_from_run")
     @patch("scripts.train.prepare_dataset")
-    @patch("scripts.train.load_scaler_from_mlflow")
+    @patch("scripts.train.load_scaler_from_run")
     @patch("scripts.train.load_and_preprocess_from_db")
     @patch("argparse.ArgumentParser.parse_args")
     def test_main_view_quality_mode(
@@ -243,6 +244,56 @@ class TestMainCLI:
         mock_load_db.assert_called_once()
         mock_load_scaler.assert_called_once_with("test_run_id_123")
         mock_load_model.assert_called_once_with("test_run_id_123")
+        mock_check_quality.assert_called_once()
+
+    @patch("scripts.train.TEST_DATABASE_PATH")
+    @patch("scripts.train.check_model_quality")
+    @patch("scripts.train.load_model_from_registry")
+    @patch("scripts.train.prepare_dataset")
+    @patch("scripts.train.load_scaler_from_registry")
+    @patch("scripts.train.load_and_preprocess_from_db")
+    @patch("argparse.ArgumentParser.parse_args")
+    def test_main_view_quality_mode_without_run_id(
+        self,
+        mock_parse_args: MagicMock,
+        mock_load_db: MagicMock,
+        mock_load_scaler: MagicMock,
+        mock_prep_ds: MagicMock,
+        mock_load_model: MagicMock,
+        mock_check_quality: MagicMock,
+        mock_test_db_path: MagicMock,
+    ) -> None:
+        """Verify --view-quality without --run-id loads champion model and scaler from Model Registry."""
+        # Arrange
+        mock_test_db_path.exists.return_value = True
+        mock_args = MagicMock()
+        mock_args.view_quality = True
+        mock_args.run_id = None
+        mock_args.batch_size = 32
+        mock_args.epochs = 25
+        mock_args.hidden = 64
+        mock_args.lr = 0.001
+        mock_args.run_name = "baseline_run"
+        mock_parse_args.return_value = mock_args
+
+        mock_test_df = MagicMock()
+        mock_load_db.return_value = mock_test_df
+        mock_scaler = MagicMock()
+        mock_scaler.transform.return_value = mock_test_df
+        mock_load_scaler.return_value = mock_scaler
+
+        mock_dataset = MagicMock()
+        mock_dataset.__len__.return_value = 5
+        mock_prep_ds.return_value = mock_dataset
+
+        mock_load_model.return_value = MagicMock()
+
+        # Act
+        main()
+
+        # Assert
+        mock_load_scaler.assert_called_once_with(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
+        mock_load_model.assert_called_once_with(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
         mock_check_quality.assert_called_once()
 
     @patch("scripts.train.TEST_DATABASE_PATH")

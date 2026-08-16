@@ -4,7 +4,8 @@ Model evaluation tool for predicting client credit default probability.
 
 import pandas as pd
 
-from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
+from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
+from credit_risk_agent.model.loader import load_model_from_registry, load_scaler_from_registry
 from credit_risk_agent.model.predictor import CreditRiskPredictor
 from credit_risk_agent.services.data_service.client import get_data_service_client
 from credit_risk_agent.services.data_service.exceptions import DataServiceHTTPError
@@ -73,8 +74,8 @@ def run_model(client_id: int) -> str:
 
         client_test_df = client_full_info_to_df(client_full_info)
 
-        model = load_model_from_mlflow()
-        scaler = load_scaler_from_mlflow()
+        model = load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
+        scaler = load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
 
         predictor = CreditRiskPredictor(model, scaler)
         score = predictor.predict_pd(client_test_df)

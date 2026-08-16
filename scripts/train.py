@@ -33,7 +33,12 @@ from credit_risk_agent.config import (
 from credit_risk_agent.data import StandardScaler
 from credit_risk_agent.data.loader import load_and_preprocess_from_db
 from credit_risk_agent.model import CreditDefaultModel, prepare_dataset
-from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
+from credit_risk_agent.model.loader import (
+    load_model_from_registry,
+    load_model_from_run,
+    load_scaler_from_registry,
+    load_scaler_from_run,
+)
 
 
 def configure_argparser() -> argparse.Namespace:
@@ -240,13 +245,17 @@ def main() -> None:
 
         print("Загрузка сохраненной модели и оценка качества на тестовой выборке...")
         test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
-        scaler = load_scaler_from_mlflow(args.run_id)
+        if args.run_id:
+            scaler = load_scaler_from_run(args.run_id)
+            model = load_model_from_run(args.run_id)
+        else:
+            scaler = load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
+            model = load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
         test_df = scaler.transform(test_df, SCALER_COLS)
 
         test_dataset = prepare_dataset(test_df, id_col=ID_COL, target_col=TARGET_COL)
         test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, shuffle=False)
 
-        model = load_model_from_mlflow(args.run_id)
         check_model_quality(model, test_loader)
         return
 

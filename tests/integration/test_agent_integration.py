@@ -5,7 +5,8 @@ from gigachat.models import FunctionCall, Messages, MessagesRole
 
 from credit_risk_agent.agent.agent import CreditRiskAgent
 from credit_risk_agent.agent.tools import GIGACHAT_FUNCTIONS, TOOLS
-from credit_risk_agent.model.loader import load_model_from_mlflow, load_scaler_from_mlflow
+from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
+from credit_risk_agent.model.loader import load_model_from_registry, load_scaler_from_registry
 from credit_risk_agent.services.data_service.client import get_data_service_client
 
 
@@ -17,8 +18,8 @@ class TestAgentIntegration:
             pytest.skip("Data Service недоступен по DATA_SERVICE_URL, пропускаем тест.")
 
         try:
-            load_model_from_mlflow()
-            load_scaler_from_mlflow()
+            load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
+            load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
         except Exception:
             pytest.skip("Champion model or scaler not found in MLflow, skipping agent integration test.")
 

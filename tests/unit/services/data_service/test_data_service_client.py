@@ -390,7 +390,7 @@ class TestGetClientMetrics:
             client.get_client_metrics(-1)
 
         assert exc.value.status_code == 422
-        assert exc.value.message != ""
+        assert exc.value.message == "Internal error"
 
     def test_get_client_metrics_server_error(self):
         def handler(request: httpx.Request) -> httpx.Response:
@@ -403,7 +403,7 @@ class TestGetClientMetrics:
             client.get_client_metrics(1)
 
         assert exc.value.status_code == 500
-        assert exc.value.message != ""
+        assert exc.value.message == "Internal error"
 
     def test_get_client_metrics_connection_error(self):
         def handler(request: httpx.Request) -> httpx.Response:
@@ -414,3 +414,27 @@ class TestGetClientMetrics:
 
         with pytest.raises(httpx.ConnectError):
             client.get_client_metrics(1)
+
+
+class TestRaiseForStatus:
+    """Test suite for DataServiceClient._raise_for_status method."""
+
+    def test_raise_for_status_joins_detail_list(self):
+        """Test that multiple validation error messages are joined with "; "."""
+        request = httpx.Request("POST", "http://localhost/api/v1/clients")
+        response = httpx.Response(
+            status_code=422,
+            request=request,
+            json={
+                "detail": [
+                    {"type": "value_error", "loc": ["body", "limit"], "msg": "Limit must be positive"},
+                    {"type": "value_error", "loc": ["body", "offset"], "msg": "Offset must be non-negative"},
+                ]
+            },
+        )
+
+        with pytest.raises(DataServiceHTTPError) as exc:
+            DataServiceClient._raise_for_status(response)
+
+        assert exc.value.status_code == 422
+        assert exc.value.message == "Limit must be positive; Offset must be non-negative"
