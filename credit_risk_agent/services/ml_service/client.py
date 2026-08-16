@@ -23,6 +23,9 @@ class MLServiceClient:
         except httpx.HTTPStatusError as exc:
             try:
                 detail = response.json().get("detail", response.text)
+                if isinstance(detail, list):
+                    errors = [error["msg"] for error in detail]
+                    detail = "; ".join(errors)
             except Exception:
                 detail = response.text
 
@@ -36,7 +39,10 @@ class MLServiceClient:
             return False
 
     def predict(self, profile_history: ClientProfileHistory) -> PredictionResponse:
-        raise NotImplementedError
+        response = self.client.post("/api/v1/predict", json=profile_history.model_dump(mode="json"))
+
+        self._raise_for_status(response)
+        return PredictionResponse.model_validate(response.json())
 
 
 @lru_cache
