@@ -14,6 +14,24 @@ from credit_risk_agent.services.ml_service.config import Settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:
+    """
+    Load the champion model and scaler from MLflow on application startup.
+
+    Sets the MLflow tracking URI, resolves the champion model version
+    from the registry, and stores a CreditRiskPredictor on ``app.state``.
+    If no champion is registered yet, the predictor is left unset and the
+    service reports unhealthy via the healthcheck endpoint.
+
+    Parameters
+    ----------
+    app : FastAPI
+        FastAPI application instance.
+
+    Yields
+    ------
+    None
+        Control is yielded to the application while it is running.
+    """
     settings = Settings()
     mlflow.set_tracking_uri(settings.mlflow_url)
     try:

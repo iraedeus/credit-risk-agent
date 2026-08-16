@@ -1,9 +1,29 @@
+"""
+ML Service request-to-features conversion utilities.
+"""
+
 import pandas as pd
 
 from credit_risk_agent.services.ml_service.schemas import ClientProfileHistory
 
 
 def client_profile_history_to_df(profile_history: ClientProfileHistory) -> pd.DataFrame:
+    """
+    Convert a client profile with payment history into a raw feature DataFrame.
+
+    One row is produced per payment history record, with the client's
+    demographic profile replicated across all rows.
+
+    Parameters
+    ----------
+    profile_history : ClientProfileHistory
+        Client profile and 6-month payment history records.
+
+    Returns
+    -------
+    pd.DataFrame
+        Raw feature DataFrame with columns matching the model input schema.
+    """
     rows = []
     p = profile_history.profile
     for h in profile_history.history:
