@@ -4,12 +4,16 @@ What-If scenario simulation tool for evaluating modified client feature hypothes
 
 from typing import Any
 
-from credit_risk_agent.agent.tools.run_model import client_full_info_to_df
-from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
-from credit_risk_agent.model.loader import load_model_from_registry, load_scaler_from_registry
-from credit_risk_agent.model.predictor import CreditRiskPredictor
+from credit_risk_agent.schemas.client_schemas import ClientPaymentHistory, ClientProfile
 from credit_risk_agent.services.data_service.client import get_data_service_client
 from credit_risk_agent.services.data_service.exceptions import DataServiceHTTPError
+from credit_risk_agent.services.ml_service.client import get_ml_service_client
+from credit_risk_agent.services.ml_service.exceptions import MLServiceHTTPError
+from credit_risk_agent.services.ml_service.schemas import ClientProfileHistory
+
+VALID_PROFILE_KEYS = {"limit_bal", "age", "sex", "education", "marriage"}
+VALID_HISTORY_KEYS = {"pay_status", "bill_amt", "pay_amt"}
+ALL_VALID_KEYS = VALID_PROFILE_KEYS | VALID_HISTORY_KEYS
 
 
 def _get_risk_level(pd_val: float) -> str:
@@ -34,12 +38,47 @@ def _get_risk_level(pd_val: float) -> str:
         return "Высокий риск"
 
 
+def _update_profile_history_params(
+    profile_history: ClientProfileHistory, params: dict[str, Any]
+) -> ClientProfileHistory:
+    """
+    Apply scenario modifications to a client's profile and payment history.
+
+    Parameters
+    ----------
+    profile_history : ClientProfileHistory
+        Original client profile and 6-month payment history.
+    params : dict[str, Any]
+        Dictionary mapping modified feature keys to new values.
+
+    Returns
+    -------
+    ClientProfileHistory
+        New ClientProfileHistory instance with updated values.
+    """
+    profile_updates = {k: v for k, v in params.items() if k in VALID_PROFILE_KEYS}
+    profile_dict = profile_history.profile.model_dump()
+    updated_profile = ClientProfile.model_validate({**profile_dict, **profile_updates})
+
+    updated_history = []
+    for h in profile_history.history:
+        if h.month == 1:
+            history_updates = {k: v for k, v in params.items() if k in VALID_HISTORY_KEYS}
+            history_dict = h.model_dump()
+            updated_history.append(ClientPaymentHistory.model_validate({**history_dict, **history_updates}))
+        else:
+            updated_history.append(h.model_copy())
+
+    return ClientProfileHistory(profile=updated_profile, history=updated_history)
+
+
 def simulate_custom_scenario(client_id: int, params: dict[str, Any]) -> str:
     """
     Simulate custom 'What-If' scenarios for a client by modifying specific features.
 
-    Fetches full client details via DataServiceClient microservice, applies custom
-    feature modifications, and predicts the new credit default probability (PD).
+    Fetches full client details via Data Service microservice, applies custom
+    feature modifications, and evaluates baseline and simulated default
+    probabilities (PD) via the ML inference microservice.
 
     Parameters
     ----------
@@ -56,39 +95,35 @@ def simulate_custom_scenario(client_id: int, params: dict[str, Any]) -> str:
         and interpretation of the risk impact.
     """
 
+    applied_changes = []
+    ignored_keys = []
+
+    for k, v in params.items():
+        if k in ALL_VALID_KEYS:
+            applied_changes.append(f"  - {k}: {v}")
+        else:
+            ignored_keys.append(k)
+
+    if not applied_changes:
+        return f"Были переданы некорректные параметры. Доступные для передачи параметры: {ALL_VALID_KEYS}"
+
     try:
         data_service_client = get_data_service_client()
+        ml_service_client = get_ml_service_client()
         client_full_info = data_service_client.get_client(client_id)
 
         if client_full_info is None:
             return f"Клиент с client_id = {client_id} не был найден в базе данных."
 
-        client_df = client_full_info_to_df(client_full_info)
-        simulated_raw_df = client_df.copy()
-        applied_changes = []
-        ignored_keys = []
+        profile_history = ClientProfileHistory(profile=client_full_info.profile, history=client_full_info.history)
+        simulated_profile_history = _update_profile_history_params(profile_history, params)
 
-        for k, v in params.items():
-            if k in simulated_raw_df.columns:
-                simulated_raw_df[k] = v
-                applied_changes.append(f"  - {k}: {v}")
-            else:
-                ignored_keys.append(k)
+        try:
+            old_pd = ml_service_client.predict(profile_history).default_probability
+            new_pd = ml_service_client.predict(simulated_profile_history).default_probability
+        except MLServiceHTTPError as err:
+            return f"Ошибка ML Service: {err}"
 
-        if not applied_changes:
-            return (
-                f"Ошибка: Ни один из переданных параметров {list(params.keys())} "
-                f"не содержится в признаках клиентов. Проверьте правильность имён полей."
-            )
-
-        scaler = load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
-        model = load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
-
-        predictor = CreditRiskPredictor(model, scaler)
-
-        old_pd = predictor.predict_pd(client_df)
-
-        new_pd = predictor.predict_pd(simulated_raw_df)
         delta_pd = new_pd - old_pd
         delta_pct = delta_pd * 100
 

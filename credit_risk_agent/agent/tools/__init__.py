@@ -32,12 +32,12 @@ PARAM_SCHEMAS = {
                 "description": "Словарь измененных параметров клиента для оценки гипотетических сценариев 'Что-Если'",
                 "properties": {
                     "limit_bal": {"type": "number", "description": "Кредитный лимит (кредитный баланс)"},
-                    "pay_0": {
+                    "pay_status": {
                         "type": "integer",
                         "description": "Статус просрочки (-1: в срок, 1..8: просрочка в мес.)",
                     },
-                    "pay_amt1": {"type": "number", "description": "Сумма последнего платежа"},
-                    "bill_amt1": {"type": "number", "description": "Сумма последнего выставленного счета"},
+                    "pay_amt": {"type": "number", "description": "Сумма последнего платежа"},
+                    "bill_amt": {"type": "number", "description": "Сумма последнего выставленного счета"},
                     "age": {"type": "integer", "description": "Возраст клиента"},
                 },
             },
