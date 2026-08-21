@@ -5,12 +5,10 @@ Streamlit dashboard page for client profile analysis and risk evaluation.
 import pandas as pd
 import streamlit as st
 
-from credit_risk_agent.agent.tools.run_model import client_full_info_to_df
-from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
-from credit_risk_agent.model.loader import load_model_from_registry, load_scaler_from_registry
-from credit_risk_agent.model.predictor import CreditRiskPredictor
 from credit_risk_agent.services.data_service.client import get_data_service_client
 from credit_risk_agent.services.data_service.schemas import ClientFullInfo
+from credit_risk_agent.services.ml_service.client import get_ml_service_client
+from credit_risk_agent.services.ml_service.schemas import ClientProfileHistory
 
 SEX_MAP = {1: "Мужской", 2: "Женский"}
 EDUCATION_MAP = {1: "Аспирантура/Магистратура", 2: "Университет", 3: "Старшая школа", 4: "Другое"}
@@ -50,19 +48,24 @@ def get_client_full_data(client_id: int) -> ClientFullInfo | None:
     return data_service_client.get_client(client_id)
 
 
-@st.cache_resource
-def get_credit_risk_predictor() -> CreditRiskPredictor:
+@st.cache_data(ttl="30m")
+def predict(profile_history: ClientProfileHistory) -> float:
     """
-    Load MLflow model and scaler once and cache CreditRiskPredictor instance.
+    Predict client credit default probability via ML inference microservice.
+
+    Parameters
+    ----------
+    profile_history : ClientProfileHistory
+        Client demographic profile and 6-month payment history records.
 
     Returns
     -------
-    CreditRiskPredictor
-        Cached predictor instance.
+    float
+        Predicted probability of default in range [0.0, 1.0].
     """
-    model = load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
-    scaler = load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
-    return CreditRiskPredictor(model, scaler)
+
+    ml_service_client = get_ml_service_client()
+    return ml_service_client.predict(profile_history).default_probability
 
 
 st.title("Профиль клиента", anchor=False)
@@ -117,9 +120,8 @@ else:
             else:
                 st.badge("Без просрочек", color="green", icon=":material/check_circle:")
 
-            client_info_df = client_full_info_to_df(client_info)
-            predictor = get_credit_risk_predictor()
-            score = predictor.predict_pd(client_info_df)
+            profile_history = ClientProfileHistory(profile=client_info.profile, history=client_info.history)
+            score = predict(profile_history)
             is_high_risk = score >= 0.5
 
             st.metric(
