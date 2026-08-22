@@ -16,13 +16,11 @@ class TestDatasetDownloaderIntegration:
         temp_data_dir = tmp_path
         train_db = temp_data_dir / "train_database.db"
         test_db = temp_data_dir / "test_database.db"
-        scaler_file = temp_data_dir / "scaler.json"
 
         monkeypatch.setattr(download_dataset, "DATA_PATH", temp_data_dir)
         monkeypatch.setattr(download_dataset, "RAW_DATABASE_PATH", temp_data_dir / "database.db")
         monkeypatch.setattr(download_dataset, "TRAIN_DATABASE_PATH", train_db)
         monkeypatch.setattr(download_dataset, "TEST_DATABASE_PATH", test_db)
-        monkeypatch.setattr(download_dataset, "SCALER_PATH", scaler_file)
 
         # Mock Kaggle authentication and dataset download
         mock_authenticate = MagicMock()
@@ -68,7 +66,6 @@ class TestDatasetDownloaderIntegration:
         assert (temp_data_dir / "database.db").exists()
         assert train_db.exists()
         assert test_db.exists()
-        assert scaler_file.exists()
 
         # Verify train/test dataset partition and stratification
         with sqlite3.connect(train_db) as conn_tr, sqlite3.connect(test_db) as conn_te:
