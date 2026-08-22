@@ -5,9 +5,9 @@ from gigachat.models import FunctionCall, Messages, MessagesRole
 
 from credit_risk_agent.agent.agent import CreditRiskAgent
 from credit_risk_agent.agent.tools import GIGACHAT_FUNCTIONS, TOOLS
-from credit_risk_agent.config import BEST_MODEL_ALIAS, BEST_MODEL_NAME
-from credit_risk_agent.model.loader import load_model_from_registry, load_scaler_from_registry
+from credit_risk_agent.config import DATA_SERVICE_URL, ML_SERVICE_URL
 from credit_risk_agent.services.data_service.client import get_data_service_client
+from credit_risk_agent.services.ml_service.client import get_ml_service_client
 
 
 class TestAgentIntegration:
@@ -15,13 +15,10 @@ class TestAgentIntegration:
         """Verify end-to-end agent execution with mocked LLM client and real database/model artifacts."""
 
         if not get_data_service_client().get_healthcheck():
-            pytest.skip("Data Service недоступен по DATA_SERVICE_URL, пропускаем тест.")
+            pytest.skip(f"Data Service недоступен по {DATA_SERVICE_URL}, пропускаем тест.")
 
-        try:
-            load_model_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
-            load_scaler_from_registry(BEST_MODEL_NAME, BEST_MODEL_ALIAS)
-        except Exception:
-            pytest.skip("Champion model or scaler not found in MLflow, skipping agent integration test.")
+        if not get_ml_service_client().get_healthcheck():
+            pytest.skip(f"ML Service недоступен по {ML_SERVICE_URL}, пропускаем тест.")
 
         # Arrange: Setup mock GigaChat client with 3-step conversation
         mock_client = MagicMock()
