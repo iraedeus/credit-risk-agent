@@ -1,6 +1,6 @@
 # Credit Risk Intelligence System (`credit-risk-agent`)
 
-A hybrid credit risk assessment and automated underwriting system combining a PyTorch deep learning model for default probability prediction, a FastAPI Data Microservice for secure client data access, and a GigaChat ReAct AI Agent for intelligent credit scoring analysis.
+A hybrid credit risk assessment and automated underwriting system combining a PyTorch deep learning model for default probability prediction, a FastAPI Data Microservice for secure client data access, a FastAPI ML Inference Microservice for scalable risk scoring, and a GigaChat ReAct AI Agent for intelligent credit scoring analysis.
 
 ---
 
@@ -8,7 +8,8 @@ A hybrid credit risk assessment and automated underwriting system combining a Py
 
 - **ReAct AI Agent**: Conducts multi-step automated credit risk analysis using function calling and outputs structured underwriting reports.
 - **FastAPI Data Microservice**: High-performance REST API service (`credit_risk_agent.services.data_service`) exposing client profiles, payment history, and calculated financial metrics.
-- **HTTP Microservice Client (`DataServiceClient`)**: Decoupled, type-safe HTTP client utilizing `httpx` and `Pydantic v2` models for seamless communication between agent tools, web UI, and the data service.
+- **FastAPI ML Inference Microservice**: High-performance REST API service (`credit_risk_agent.services.ml_service`) serving credit default risk predictions via cached PyTorch models and scalers.
+- **Decoupled HTTP Clients (`DataServiceClient` & `MLServiceClient`)**: Type-safe HTTP clients utilizing `httpx` and `Pydantic v2` models for seamless communication between agent tools, web UI, and microservices.
 - **Real-Time Event Streaming**: Real-time streaming of agent reasoning steps (`thought`), tool executions (`tool_call`), observations (`observation`), and final underwriting decisions (`final`).
 - **Hybrid ML Model (`CreditDefaultPredictor`)**: PyTorch neural network processing 6-month historical payment sequences alongside static demographic features to estimate default probability.
 - **Scenario Simulation & Stress Testing**: Custom scenario simulation tool (`simulate_custom_scenario`) allowing the agent to evaluate "what-if" financial conditions (e.g. credit limit adjustments or payment behavior changes).
@@ -20,14 +21,14 @@ A hybrid credit risk assessment and automated underwriting system combining a Py
 ## Tech Stack
 
 - **Core**: Python 3.12+, Poetry
-- **Microservice & API**: FastAPI, Uvicorn, HTTPX, Pydantic v2, SQLAlchemy
+- **Microservices & API**: FastAPI, Uvicorn, HTTPX, Pydantic v2, SQLAlchemy
 - **Machine Learning**: PyTorch, Scikit-Learn, Pandas, NumPy
 - **LLM & Agent**: GigaChat API SDK, ReAct Pattern
 - **Web UI**: Streamlit
 - **Database**: SQLite3
 - **Experiment Tracking**: MLflow
 - **DevOps & Containerization**: Docker, Docker Compose
-- **Quality & Testing**: Pytest (130+ unit & integration tests), Ruff, Mypy, Pre-commit
+- **Quality & Testing**: Pytest (155+ unit & integration tests), Ruff, Mypy, Pre-commit
 
 ---
 
@@ -35,13 +36,16 @@ A hybrid credit risk assessment and automated underwriting system combining a Py
 
 ```mermaid
 graph TD
-    UI[Streamlit Web UI / CLI] -->|HTTP Requests| DS[FastAPI Data Microservice]
+    UI[Streamlit Web UI / CLI] -->|Data Requests| DSC
+    UI -->|Inference Requests| MLC
     UI -->|Prompt / Chat| AG[ReAct AI Agent]
     AG -->|Tool Calls| TL[Agent Tools]
     TL -->|Data Requests| DSC[DataServiceClient]
-    DSC -->|REST API| DS
-    TL -->|Inference| ML[PyTorch Model]
+    DSC -->|REST API| DS[FastAPI Data Microservice]
+    TL -->|Inference Requests| MLC[MLServiceClient]
+    MLC -->|REST API| ML[FastAPI ML Microservice]
     DS -->|SQLAlchemy| DB[(SQLite Database)]
+    ML -->|Model Loading| MFR[(MLflow Model Registry / Artifacts)]
 ```
 
 ---
@@ -72,8 +76,11 @@ KAGGLE_KEY=your_kaggle_key
 GIGACHAT_CREDENTIALS=your_gigachat_authorization_data
 GIGACHAT_MODEL=GigaChat-2
 
-DATA_SERVICE_URL=http://localhost
-DATA_SERVICE_PORT=8000
+DATA_SERVICE_HOST=http://localhost
+DATA_SERVICE_PORT=8001
+
+ML_SERVICE_HOST=http://localhost
+ML_SERVICE_PORT=8002
 ```
 
 ---
@@ -108,13 +115,20 @@ Open `http://localhost:5000` in your browser.
 ## Usage
 
 ### 1. Start FastAPI Data Microservice
-Launch the Data Microservice API server:
+Launch the Data Microservice API server (port 8001):
 ```bash
-poetry run uvicorn credit_risk_agent.services.data_service.main:app --reload --port 8000
+poetry run uvicorn credit_risk_agent.services.data_service.main:app --reload --port 8001
 ```
-API Healthcheck: `http://localhost:8000/api/v1/healthcheck`
+API Healthcheck: `http://localhost:8001/api/v1/healthcheck`
 
-### 2. Web Application (Streamlit)
+### 2. Start FastAPI ML Inference Microservice
+Launch the ML Inference Microservice API server (port 8002):
+```bash
+poetry run uvicorn credit_risk_agent.services.ml_service.main:app --reload --port 8002
+```
+API Healthcheck: `http://localhost:8002/api/v1/healthcheck`
+
+### 3. Web Application (Streamlit)
 ```bash
 poetry run streamlit run credit_risk_agent/app/main.py
 ```
@@ -122,7 +136,7 @@ Open `http://localhost:8501` to access:
 - **Client Profile**: Financial metrics, utilization trends, and payment discipline.
 - **AI Agent Chat**: Interactive chat interface with real-time reasoning visualization.
 
-### 3. Command Line Interface (CLI)
+### 4. Command Line Interface (CLI)
 
 List available test client IDs:
 ```bash
@@ -144,7 +158,7 @@ Interactive terminal chat mode:
 poetry run credit-risk-agent --chat --verbose
 ```
 
-### 4. Docker Containerization
+### 5. Docker Containerization
 
 Run the application using Docker Compose:
 ```bash
@@ -197,7 +211,8 @@ credit-risk-agent/
 │   ├── model/              # PyTorch model definitions, dataset wrappers, predictor
 │   ├── schemas/            # Pydantic schemas (agent, ML, domain enums)
 │   ├── services/           # Microservices layer
-│   │   └── data_service/   # FastAPI microservice (routers, repository, HTTP client)
+│   │   ├── data_service/   # FastAPI Data microservice (routers, repository, HTTP client)
+│   │   └── ml_service/     # FastAPI ML Inference microservice (routers, loader, HTTP client)
 │   └── config.py           # Paths, microservice settings, hyperparameter defaults
 ├── data/                   # SQLite database files (database.db, train/test split DBs)
 ├── docs/                   # Documentation and ER diagrams
@@ -205,7 +220,7 @@ credit-risk-agent/
 ├── scripts/                # Data download and training CLI scripts
 ├── tests/                  # Pytest unit and integration test suite
 │   ├── integration/        # Microservice, training, agent integration tests
-│   └── unit/               # Comprehensive unit tests (130+ tests)
+│   └── unit/               # Comprehensive unit tests (155+ tests)
 ├── Dockerfile              # Docker container definition
 ├── docker-compose.yml      # Docker Compose configuration
 ├── pyproject.toml          # Poetry dependencies and tool configurations
