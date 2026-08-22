@@ -5,13 +5,13 @@ Command Line Interface (CLI) application for interacting with Credit Risk Agent.
 import argparse
 import os
 
-import pandas as pd
 from dotenv import load_dotenv
 from gigachat import GigaChat
 
 from credit_risk_agent.agent.agent import CreditRiskAgent
 from credit_risk_agent.agent.tools import get_client_financial_metrics, run_model
-from credit_risk_agent.config import ARTIFACTS_PATH, GIGACHAT_MODEL
+from credit_risk_agent.config import GIGACHAT_MODEL
+from credit_risk_agent.services.data_service.client import get_data_service_client
 
 
 def get_client_info(client_id: int) -> None:
@@ -92,10 +92,9 @@ def list_test_clients(limit: int = 10) -> None:
     limit : int, default=10
         Maximum number of client IDs to display.
     """
-    test_clients = pd.read_csv(ARTIFACTS_PATH / "test_clients.csv")
-    ids = test_clients["client_id"].head(limit).astype(str).to_list()
-    print(f"Доступные ID клиентов (первые {len(ids)}):")
-    print(", ".join(ids))
+    client_ids = get_data_service_client().get_clients(offset=0, limit=limit)
+    print(f"Доступные ID клиентов (первые {len(client_ids)}):")
+    print(", ".join(map(str, client_ids)))
 
 
 def main() -> None:

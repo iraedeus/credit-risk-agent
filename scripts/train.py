@@ -4,6 +4,7 @@ Model training CLI script, evaluation pipeline, and MLflow champion registration
 
 import argparse
 import copy
+import tempfile
 from pathlib import Path
 
 import mlflow
@@ -23,9 +24,7 @@ from credit_risk_agent.config import (
     HIDDEN_SIZE,
     ID_COL,
     LEARNING_RATE,
-    MODEL_SAVE_PATH,
     SCALER_COLS,
-    SCALER_PATH,
     TARGET_COL,
     TEST_DATABASE_PATH,
     TRAIN_DATABASE_PATH,
@@ -67,7 +66,6 @@ def configure_argparser() -> argparse.Namespace:
 
 def train_model(
     train_loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
-    model_save_path: Path,
     epochs: int = EPOCHS,
     lr: float = LEARNING_RATE,
     hidden_size: int = HIDDEN_SIZE,
@@ -81,8 +79,6 @@ def train_model(
     ----------
     train_loader : DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]
         DataLoader yielding batches of sequence features, static features, and target labels.
-    model_save_path : Path
-        Destination filepath to save the trained model weights PyTorch checkpoint.
     epochs : int, default=25
         Number of training epochs.
     lr : float, default=LEARNING_RATE
@@ -136,9 +132,6 @@ def train_model(
 
     if mlflow.active_run():
         mlflow.log_metric("best_train_loss", best_loss)
-
-    if best_weights is not None:
-        torch.save(best_weights, model_save_path)
 
     model.load_state_dict(best_weights)
     return model, best_loss
@@ -267,7 +260,7 @@ def main() -> None:
     train_df = load_and_preprocess_from_db(TRAIN_DATABASE_PATH)
     test_df = load_and_preprocess_from_db(TEST_DATABASE_PATH)
 
-    scaler = StandardScaler.load(SCALER_PATH)
+    scaler = StandardScaler().fit(train_df, SCALER_COLS)
     train_df = scaler.transform(train_df, SCALER_COLS)
     test_df = scaler.transform(test_df, SCALER_COLS)
 
@@ -291,11 +284,12 @@ def main() -> None:
             }
         )
 
-        mlflow.log_artifact(str(SCALER_PATH), artifact_path="preprocessing")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_scaler_path = Path(tmp_dir) / "scaler.json"
+            scaler.save(tmp_scaler_path)
+            mlflow.log_artifact(str(tmp_scaler_path), artifact_path="preprocessing")
 
-        model, loss = train_model(
-            train_loader, MODEL_SAVE_PATH, epochs=args.epochs, lr=args.lr, hidden_size=args.hidden
-        )
+        model, loss = train_model(train_loader, epochs=args.epochs, lr=args.lr, hidden_size=args.hidden)
         check_model_quality(model, test_loader)
 
         if isinstance(model, torch.nn.Module):

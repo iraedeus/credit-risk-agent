@@ -45,14 +45,11 @@ class TestLoadData:
 
 class TestTrainModel:
     @patch("scripts.train.nn.BCEWithLogitsLoss")
-    @patch("scripts.train.torch.save")
     @patch("scripts.train.CreditDefaultModel")
     def test_train_model_executes_epoch_loop_and_saves_weights(
         self,
         mock_predictor_cls: MagicMock,
-        mock_torch_save: MagicMock,
         mock_loss_cls: MagicMock,
-        tmp_path: Path,
     ) -> None:
         """Verify that train_model runs training iterations over loader batches and saves model weights to disk."""
         # Arrange
@@ -73,13 +70,11 @@ class TestTrainModel:
         dummy_label = torch.tensor([[0.0]])
 
         mock_loader = [(dummy_seq, dummy_static, dummy_label)]
-        save_path = tmp_path / "model.pth"
 
         # Act
-        result_model, result_loss = train_model(mock_loader, save_path)
+        result_model, result_loss = train_model(mock_loader)
 
         # Assert
-        mock_torch_save.assert_called_once_with(mock_model.state_dict(), save_path)
         assert result_model == mock_model
         assert result_loss == 0.5
 

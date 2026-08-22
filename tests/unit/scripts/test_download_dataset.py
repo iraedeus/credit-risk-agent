@@ -7,7 +7,6 @@ from scripts.download_dataset import (
     create_train_test_db,
     data_preprocessing,
     download_kaggle_dataset,
-    fit_and_save_scaler,
 )
 
 
@@ -109,20 +108,3 @@ class TestCreateTrainTestDb:
         assert mock_read_sql.call_count == 3
         mock_split.assert_called_once()
         assert mock_to_sql.call_count == 6
-
-
-class TestFitAndSaveScaler:
-    @patch("scripts.download_dataset.StandardScaler")
-    @patch("scripts.download_dataset.load_and_preprocess_from_db")
-    def test_fit_and_save_scaler_trains_on_train_db(self, mock_load_db: MagicMock, mock_scaler_cls: MagicMock) -> None:
-        """Verify fit_and_save_scaler fits scaler on training database and saves scaler artifact."""
-        mock_df = pd.DataFrame({"client_id": [1], "age": [30]})
-        mock_load_db.return_value = mock_df
-
-        mock_scaler_instance = MagicMock()
-        mock_scaler_cls.return_value.fit.return_value = mock_scaler_instance
-
-        fit_and_save_scaler()
-
-        mock_load_db.assert_called_once()
-        mock_scaler_instance.save.assert_called_once()

@@ -13,14 +13,10 @@ from credit_risk_agent.config import (
     DATA_PATH,
     ID_COL,
     RAW_DATABASE_PATH,
-    SCALER_COLS,
-    SCALER_PATH,
     TARGET_COL,
     TEST_DATABASE_PATH,
     TRAIN_DATABASE_PATH,
 )
-from credit_risk_agent.data.loader import load_and_preprocess_from_db
-from credit_risk_agent.data.standard_scaler import StandardScaler
 
 load_dotenv()
 
@@ -166,17 +162,6 @@ def create_train_test_db() -> None:
         test_gt.to_sql("ground_truth", test_conn, if_exists="replace", index=False)
 
 
-def fit_and_save_scaler() -> None:
-    """
-    Fit StandardScaler on preprocessed training database records and save scaler parameters to disk.
-
-    Prevents data leakage by computing feature statistics strictly on the training partition.
-    """
-    train_df = load_and_preprocess_from_db(TRAIN_DATABASE_PATH)
-    scaler = StandardScaler().fit(train_df, SCALER_COLS)
-    scaler.save(SCALER_PATH)
-
-
 def main() -> None:
     """
     Execute the full ETL pipeline for the Credit Card dataset.
@@ -189,7 +174,6 @@ def main() -> None:
     client_df, history_df = data_preprocessing()
     create_raw_sql_db(client_df, history_df)
     create_train_test_db()
-    fit_and_save_scaler()
     (DATA_PATH / "UCI_Credit_Card.csv").unlink(missing_ok=True)
 
 

@@ -1,4 +1,5 @@
 import sqlite3
+import tempfile
 from pathlib import Path
 
 import mlflow
@@ -25,18 +26,12 @@ class TestMLflowPipeline:
         artifacts_path = tmp_path / "artifacts"
         artifacts_path.mkdir(exist_ok=True)
 
-        scaler_path = artifacts_path / "scaler.json"
-        model_path = artifacts_path / "model.pt"
-
         monkeypatch.setattr(download_module, "RAW_DATABASE_PATH", db_path)
         monkeypatch.setattr(download_module, "TRAIN_DATABASE_PATH", train_db_path)
         monkeypatch.setattr(download_module, "TEST_DATABASE_PATH", test_db_path)
-        monkeypatch.setattr(download_module, "SCALER_PATH", scaler_path)
 
         monkeypatch.setattr(train_module, "TRAIN_DATABASE_PATH", train_db_path)
         monkeypatch.setattr(train_module, "TEST_DATABASE_PATH", test_db_path)
-        monkeypatch.setattr(train_module, "MODEL_SAVE_PATH", model_path)
-        monkeypatch.setattr(train_module, "SCALER_PATH", scaler_path)
 
         # 2. Populate synthetic database (10 clients, 60 payment records)
         with sqlite3.connect(db_path) as conn:
@@ -75,7 +70,7 @@ class TestMLflowPipeline:
         tracking_uri = f"sqlite:///{mlflow_db_path}"
         mlflow.set_tracking_uri(tracking_uri)
 
-    def test_full_mlflow_lifecycle(self, tmp_path: Path):
+    def test_full_mlflow_lifecycle(self):  # noqa: PLR0915
         """Verify complete MLflow lifecycle: error on clean state, 1st champion registration,
         ignoring worse runs, and promoting better runs to champion v2."""
 
@@ -92,7 +87,7 @@ class TestMLflowPipeline:
         test_df = train_module.load_and_preprocess_from_db(train_module.TEST_DATABASE_PATH)
 
         scaler = StandardScaler().fit(train_df, train_module.SCALER_COLS)
-        scaler.save(train_module.SCALER_PATH)
+
         train_df = scaler.transform(train_df, train_module.SCALER_COLS)
         test_df = scaler.transform(test_df, train_module.SCALER_COLS)
 
@@ -105,8 +100,11 @@ class TestMLflowPipeline:
 
         # --- Step 2: 1st Training Pass (Should become Champion v1) ---
         with mlflow.start_run(run_name="pass_1"):
-            mlflow.log_artifact(str(train_module.SCALER_PATH), artifact_path="preprocessing")
-            model1, loss1 = train_module.train_model(train_loader, train_module.MODEL_SAVE_PATH, epochs=2)
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_scaler_path = Path(tmp_dir) / "scaler.json"
+                scaler.save(tmp_scaler_path)
+                mlflow.log_artifact(str(tmp_scaler_path), artifact_path="preprocessing")
+            model1, loss1 = train_module.train_model(train_loader, epochs=2)
             mlflow.pytorch.log_model(model1, artifact_path="model", serialization_format="pickle")
             train_module.save_champion_model(loss1)
 
@@ -124,7 +122,10 @@ class TestMLflowPipeline:
         worse_loss = loss1 + 10.0  # Artificially higher loss
         with mlflow.start_run(run_name="pass_2_worse"):
             mlflow.log_metric("best_train_loss", worse_loss)
-            mlflow.log_artifact(str(train_module.SCALER_PATH), artifact_path="preprocessing")
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_scaler_path = Path(tmp_dir) / "scaler.json"
+                scaler.save(tmp_scaler_path)
+                mlflow.log_artifact(str(tmp_scaler_path), artifact_path="preprocessing")
             model2 = CreditDefaultModel(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
             mlflow.pytorch.log_model(model2, artifact_path="model", serialization_format="pickle")
             train_module.save_champion_model(worse_loss)
@@ -136,7 +137,10 @@ class TestMLflowPipeline:
         better_loss = loss1 - 0.1  # Artificially lower loss
         with mlflow.start_run(run_name="pass_3_better"):
             mlflow.log_metric("best_train_loss", better_loss)
-            mlflow.log_artifact(str(train_module.SCALER_PATH), artifact_path="preprocessing")
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_scaler_path = Path(tmp_dir) / "scaler.json"
+                scaler.save(tmp_scaler_path)
+                mlflow.log_artifact(str(tmp_scaler_path), artifact_path="preprocessing")
             model3 = CreditDefaultModel(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
             mlflow.pytorch.log_model(model3, artifact_path="model", serialization_format="pickle")
             train_module.save_champion_model(better_loss)
