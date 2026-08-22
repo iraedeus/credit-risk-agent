@@ -24,12 +24,6 @@ ID_COL = "client_id"
 TARGET_COL = "default"
 SCALER_COLS = ["pay_amt", "bill_amt", "limit_bal"]
 
-ARTIFACTS_PATH = __ROOT__ / "artifacts"
-ARTIFACTS_PATH.mkdir(exist_ok=True)
-
-SCALER_PATH = ARTIFACTS_PATH / "scaler.json"
-MODEL_SAVE_PATH = ARTIFACTS_PATH / "model.pt"
-
 # Model Hyperparameters
 
 BATCH_SIZE = 32

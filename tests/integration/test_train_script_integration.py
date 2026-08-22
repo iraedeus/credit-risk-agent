@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+import torch
 from torch.utils.data import DataLoader
 
 import scripts.download_dataset as download_module
@@ -19,21 +20,13 @@ class TestTrainScriptIntegration:
         db_path = tmp_path / "database.db"
         train_db_path = tmp_path / "train_database.db"
         test_db_path = tmp_path / "test_database.db"
-        artifacts_path = tmp_path / "artifacts"
-        artifacts_path.mkdir()
-
-        scaler_path = artifacts_path / "scaler.json"
-        model_path = artifacts_path / "model.pth"
 
         monkeypatch.setattr(download_module, "RAW_DATABASE_PATH", db_path)
         monkeypatch.setattr(download_module, "TRAIN_DATABASE_PATH", train_db_path)
         monkeypatch.setattr(download_module, "TEST_DATABASE_PATH", test_db_path)
-        monkeypatch.setattr(download_module, "SCALER_PATH", scaler_path)
 
         monkeypatch.setattr(train_module, "TRAIN_DATABASE_PATH", train_db_path)
         monkeypatch.setattr(train_module, "TEST_DATABASE_PATH", test_db_path)
-        monkeypatch.setattr(train_module, "MODEL_SAVE_PATH", model_path)
-        monkeypatch.setattr(train_module, "SCALER_PATH", scaler_path)
 
         # Populate synthetic SQLite database with 10 clients and 60 payment records
         with sqlite3.connect(db_path) as conn:
@@ -73,7 +66,7 @@ class TestTrainScriptIntegration:
         test_df = train_module.load_and_preprocess_from_db(test_db_path)
 
         scaler = StandardScaler().fit(train_df, train_module.SCALER_COLS)
-        scaler.save(scaler_path)
+
         train_df = scaler.transform(train_df, train_module.SCALER_COLS)
         test_df = scaler.transform(test_df, train_module.SCALER_COLS)
 
@@ -85,18 +78,20 @@ class TestTrainScriptIntegration:
 
         # Train for 1 epoch for fast integration test
         with patch("scripts.train.range", return_value=range(1)):
-            model, _ = train_module.train_model(train_loader, model_path)
+            model, _ = train_module.train_model(train_loader)
             train_module.check_model_quality(model, test_loader)
 
         # 3. Assert: Verify generated artifacts
-        assert scaler_path.exists()
-        assert model_path.exists()
         assert train_db_path.exists()
         assert test_db_path.exists()
 
-        loaded_scaler = StandardScaler.load(scaler_path)
-        assert loaded_scaler.mean is not None
+        assert scaler.mean is not None
+        assert len(scaler.mean) == len(train_module.SCALER_COLS)
 
-        loaded_model = CreditDefaultModel(hidden_size=64, num_layers=1, static_size=14, dropout_prob=0.28)
-        loaded_model.load_state_dict(train_module.torch.load(model_path))
-        assert loaded_model is not None
+        assert isinstance(model, CreditDefaultModel)
+
+        dummy_seq, dummy_static, _ = next(iter(test_loader))
+        with torch.no_grad():
+            outputs = model(dummy_seq, dummy_static)
+
+        assert outputs.shape == (len(dummy_seq), 1)
